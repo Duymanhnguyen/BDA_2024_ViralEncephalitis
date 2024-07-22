@@ -1,0 +1,550 @@
+---
+title: "BDA_2024_MetaAnalysis_ViralEncephalitis"
+author: "Duy Nguyen"
+date: "2024-07-22"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Research Flow of Meta-Analysis of Transcriptomics Profile in 
+## Viral Encephalitis
+
+*Step 1:* Project set up with necessary packages
+
+*Step 2:* Search for dataset in Gemma using individual search terms, including:
+
+- Relevant search terms
+
+- Specific virus names with capabilities for causing encephalitis
+
+Datasets included for meta-analysis: GSE30577, GSE42264, GSE44331, GSE51365,
+GSE53784, GSE91074
+
+*Step 3:* Assess gene expression range 
+
+(Some datasets, especially Agilent microarray datasets, were normalized incorrectly,
+which may require re-normalization)
+
+*Step 4:* Extract statistical contrasts of differential analysis in the datasets
+
+(These statistical contrasts allow us to check if the differential analyses are:
+
+- Subsetted by brain region 
+
+- Included unwanted subjects
+
+- Set up in an appropriate manner with the reference group
+
+Based on the statistical contrasts, we might need to re-run the differential analysis)
+
+*Step 5:* Download the differential expression (DE) results from each dataset 
+
+
+
+### 1) Project Set Up
+
+```{r setdw, eval = FALSE, echo = FALSE}
+# Set working directory 
+setdw("/Users/manhduynguyen/BDA_2024_ViralEncephalitis")
+```
+
+
+```{r renv, eval = FALSE, echo = FALSE}
+# Initiate the project with renv
+renv::init()
+
+# Save to lockfile
+renv::snapshot()
+```
+
+
+```{r install_pack, eval = FALSE, echo = FALSE}
+# Download packages
+if(!requireNamespace("devtools", quietly = T)){
+  install.packages("devtools")
+}
+devtools:: install_github("PavlidisLab/gemma.R", force = T)
+install.packages("plyr")
+install.packages("tidyverse")
+install.packages("writexl")
+```
+
+
+```{r load_pack}
+# Load packages
+library("gemma.R")
+library("plyr")
+library("tidyverse")
+library("writexl")
+
+# Check loaded packages 
+(.packages())
+```
+
+
+### 2) Gemma Dataset Search
+
+```{r data_search, eval = FALSE}
+# Extract datasets from Gemma based on single search terms
+Sepsis <- searchDatasets("Sepsis", limit = 100)
+Encephalitis <- searchDatasets("Encephalitis", limit = 100)
+Viral_Encephalitis <- searchDatasets("Viral Encephalitis", limit = 100)
+Neuroinflammation <- searchDatasets("Neuroinflammation", limit = 100)
+Neuroimmune <- searchDatasets("Neuroinmmune", limit = 100)
+Neuroimmunology <- searchDatasets("Neuroinmmunology", limit = 100)
+Neurotoxicity <- searchDatasets("Neurotoxicity", limit = 100)
+Neuroimmunity <- searchDatasets("Neuroimmunity", limit = 100)
+Neuroinflame <- searchDatasets("Neuroinflame", limit = 100)
+Neuroinflammatory <- searchDatasets("Neuroinflammatory", limit = 100)
+Neurotropic <- searchDatasets("Neurotropic", limit = 100)
+Neuroinvasive <- searchDatasets("Neuroinvasive", limit = 100)
+Neurovirulence <- searchDatasets("Neurovirulence", limit = 100)
+Viral = <- searchDatasets("Viral", limit = 100)
+Virus = <- searchDatasets("Virus", limit = 100)
+Infection <- searchDatasets("Infection", limit = 100)
+Viral_Infection <- searchDatasets("Viral Infection", limit = 100)
+Brain_Infection <- searchDatasets("Brain Infection", limit = 100)
+Brain_Inflammation <- searchDatasets("Brain Inflammation", limit = 100)
+Brain_Immunology <- searchDatasets("Brain Immunology", limit = 100)
+Brain_Inflammatory <- searchDatasets("Brain Inflammatory", limit = 100)
+
+# Extract datasets from Gemma based on specific viruses
+Zika <- searchDatasets("Zika", limit = 100)
+Chikungunya <- searchDatasets("Chikungunya", limit = 100)
+West_Nile <- searchDatasets("West Nile", limit = 100)
+Japanese_encephalitis <- searchDatasets("Japanese encephalitis", limit = 100)
+Venezuelan_encephalitis <- searchDatasets("Venezuelan encephalitis", limit = 100)
+StLouis_encephalitis <- searchDatasets("St Louis encephalitis", limit = 100)
+Polio <- searchDatasets("Polio", limit = 100)
+Mumps <- searchDatasets("Mumps", limit = 100)
+Measles <- searchDatasets("Measles", limit = 100)
+Nipah <- searchDatasets("Nipah", limit = 100)
+Hendra <- searchDatasets("Hendra", limit = 100)
+Herpes <- searchDatasets("Herpes", limit = 100)
+Varicella <- searchDatasets("Varicella zoster", limit = 100)
+Epstein_Barr <- searchDatasets("Epstein Barr", limit = 100)
+Cytomegalo <- searchDatasets("Cytomegalovirus", limit = 100)
+Rabies <- searchDatasets("Rabies", limit = 100)
+Influenza <- searchDatasets("Influenza", limit = 100)
+Corona <- searchDatasets("Coronavirus", limit = 100)
+Yellow_fever <- searchDatasets("Yellow fever", limit = 100)
+
+
+
+# Extract the data to excel file
+write_xlsx(Sepsis, "Sepsis.xlsx") 
+write_xlsx(Encephalitis,"Encephalitis.xlsx")
+write_xlsx(Viral_Encephalitis, "Viral Encephalitis.xlsx")
+write_xlsx(Neuroinflammation, "Neuroinflammation.xlsx")
+write_xlsx(Neuroimmunity,"Neuroimmunity.xlsx")
+write_xlsx(Neuroinflammatory,"Neuroinflammatory.xlsx")
+write_xlsx(Neurotoxicity,"Neurotoxicity.xlsx")
+write_xlsx(Neurotropic,"Neurotropic.xlsx")
+write_xlsx(Neuroinvasive, "Neuroinvasive.xlsx")
+write_xlsx(Neurovirulence, "Neurovirulence")
+write_xlsx(Viral, "Viral.xlsx")
+write_xlsx(Viral_Infection,"Viral Infection.xlsx")
+write_xlsx(Virus,"Virus.xlsx")
+write_xlsx(Infection, "Infection.xlsx")
+
+# Count the frequency of unique values in a dataframe
+table(Sepsis$taxon.Name) #Count based on the model (human, mouse, rat)
+
+# Combine and exclude datasets of other models than mouse/rat
+Total_datasets = rbind(Brain_Immunology, Brain_Infection, Brain_Inflammation, 
+                       Corona, Cytomegalo, Encephalitis, Epstein_Barr, Hendra, 
+                       Herpes, Infection,Influenza,Japanese_encephalitis, Measles, 
+                       Neuroinflammation, Neuroinflammatory, Neuroinvasive, 
+                       Neurotoxicity, Neurotropic, Neurovirulence, Rabies, Sepsis, 
+                       Varicella, Venezuelan_encephalitis, Viral, Viral_Encephalitis, 
+                       Viral_Infection, Virus, West_Nile, Yellow_fever, Zika)
+Total_datasets_eli_1 = subset(Total_datasets, Total_datasets$taxon.Name == "mouse")
+Total_datasets_eli_2 = subset(Total_datasets, Total_datasets$taxon.Name == "rat")
+Total_datasets_eli = unique(rbind(Total_datasets_eli_1, Total_datasets_eli_2))
+write_xlsx(Total_datasets_eli, "Total datasets.xlsx")
+```
+
+Through process of inclusion/exclusion criteria, 6 datasets are included in the 
+meta-analysis, including: GSE30577, GSE42264, GSE44331, GSE51365, GSE53784,
+GSE91074.
+
+### 3) Gene Expression Range Assessment
+
+```{r assess_gene_express, cache = TRUE}
+# Create a function to check the expression range of the dataset 
+# (especially for the Agilent microarray datasets)
+CheckGeneExpressionRange <- function(dataset_shortname){
+  
+  # Retrieve the processed expression data for the given dataset
+  expression_data <- get_dataset_processed_expression(dataset_shortname)
+  
+  # Print the structure of the expression data
+  print(str(expression_data))
+  
+  # The first four columns are row metadata: Probe, GeneSymbol, GeneName, NCBI ID
+  # The rest of the columns are gene expression values for each subject
+  
+  # Exclude metadata row (row 1-4) and convert the gene expression columns to a 
+  # matrix for further analysis 
+  expression_matrix <- as.matrix(expression_data[,-1:-4])
+  
+  # Create a histogram of the expression data 
+  hist(expression_matrix, 
+       main = paste("Histogram of Expression Data for", dataset_shortname),
+       # The y-axis is the gene frequency
+       # The x-axis is log 2 gene expression - log 2 counts per million
+       xlab = "Log 2 Expression", ylab = "Frequency")
+  
+       # The large spike on the left side of the histogram ("floor effect") are 
+       # all of the genes that are not truly expressed or have too low of expression 
+       # to be measurable 
+  
+  # Log 2 RNA-seq dataset has the range between -5 to 12
+  # Log 2 Microarray dataset has the range between 4 to 15
+  
+  # Calculate the min, median, max values of the expression data
+  min_val <- min(expression_matrix)
+  median_val <- median(expression_matrix)
+  max_val <- max(expression_matrix)
+  
+  # Print the calculated values
+  print(paste("Minimum value:", min_val))
+  print(paste("Median value:", median_val))
+  print(paste("Maximum value:", max_val))
+}
+
+# Function use 
+check_expression("GSE30577") # Min: -4.8 | Max: 8.6 | Agilent Microarray 
+check_expression("GSE42264") # Min: 2.4 | Max: 14.6 | Affymetrix Array
+check_expression("GSE44331") # Min: 2.9 | Max: 14.5 | Affymetrix Array
+check_expression("GSE51365") # Min: 1.2 | Max: 15.7 | Affymetrix Array
+check_expression("GSE53784") # Min: 2.0 | Max: 14.1 | Affymetrix Array
+check_expression("GSE91074") # Min: 2.8 | Max: 14.3 | Affymetrix Array
+```
+
+
+### 4) Extraction of Statistical Contrasts of Differential Analysis in Each Dataset
+
+
+```{r}
+ExperimentIDs <- c("GSE30577", "GSE42264", "GSE44331", 
+                   "GSE51365", "GSE53784","GSE91074")
+
+GSE30577 <- get_datasets("GSE30577")
+GSE42264 <- get_datasets("GSE42264")
+GSE44331 <- get_datasets("GSE44331")
+GSE51365 <- get_datasets("GSE51365")
+GSE53784 <- get_datasets("GSE53784")
+GSE91074 <- get_datasets("GSE91074")
+
+MyDatasets_Screened <- rbind(GSE30577, GSE42264, GSE44331,
+                             GSE51365, GSE53784, GSE91074)
+```
+
+
+For the meta-analysis, we will be extracting the differential expression results 
+from Gemma. The differential expression results for each dataset may include 
+multiple result sets (e.g., one result set for the subset of the data from the 
+hippocampus, one result set for frontal cortex). Each of these result sets may 
+have multiple statistical contrasts (e.g., drug1 vs. vehicle, drug2 vs. vehicle). 
+Therefore, each of the statistical contrasts is labeled with a result ID and 
+contrast ID within the Gemma database. We will need to know which of these IDs 
+are relevant to our project goals to easily extract their results.
+
+We will also need to double-check that these statistical contrasts are set up in 
+a manner that makes sense for our experiments:
+
+1. For experiments that include more than one brain region, we will need to 
+double-check that the results have been subsetted by brain region (instead of 
+including brain region ("OrganismPart") as a factor in the model). If they have 
+not been subsetted by region, we will probably need to re-run the differential 
+expression analysis.
+
+2. Depending on the goals of the meta-analysis, we may also need to re-run the 
+differential expression analysis to remove other unwanted subjects (e.g., removing 
+subjects with genotypes that might interfere with our results).
+
+3. We will need to double-check that the comparisons include an appropriate 
+reference group - sometimes they are reversed in Gemma (e.g., having the drug 
+treatment set as the baseline, with vehicle as the manipulation). If this is the 
+case, we will need to invert the effects when we input them into our meta-analysis 
+(multiply the effects by -1).
+
+
+```{r}
+# Create a function to extract statistical contrasts of differential analysis 
+# in each dataset 
+GettingResultSetInfoForDatasets <- function(dataset_shortname) {
+  
+  # Create a dataframe to store the results 
+  resultsets_toscreen <- data.frame(
+    ExperimentIDs = character(),
+    ResultSetIDs = character(),
+    ContrastIDs = character(),
+    FactorCategory = character(),
+    ExperimentalFactors = character(),
+    BaselineFactors = character(),
+    Subsetted = logical(),
+    SubsetBy = character(),
+    stringsAsFactors = FALSE
+  )
+  
+  # Loop through each of the datasets 
+  for (i in c(1:length(dataset_shortname))) {
+    
+    # Extract the differential expression analysis from the datasets 
+    design <- get_dataset_differential_expression_analyses(dataset_shortname[i])
+    
+    # Check if the design dataframe has rows
+    if (nrow(design) > 0) {
+      
+      # Create the vectors to store the experimental and baseline factors
+      experimental_factors <- vector(mode = "character", length = nrow(design))
+      baseline_factors <- vector(mode = "character", length = nrow(design))
+      
+      # Loop through each result.ID in the design dataframe
+      for (j in c(1:nrow(design))) {
+        
+        # Concatenate the experimental factors into a single string
+        experimental_factors[j] <- paste(design$experimental.factors[[j]]$summary, 
+                                         collapse = ";")
+        
+        # Concatenate the baseline factors into a single string 
+        baseline_factors[j] <- paste(design$baseline.factors[[j]]$summary, 
+                                     collapse = ";")
+      }
+      
+      # Create a vector to store subset information
+      SubsetBy <- vector(mode = "character", length = nrow(design))
+      
+      # Check if the design dataframe is subsetted or not
+      if (design$isSubset[1] == TRUE) {
+        
+        # Loop through each result.ID to extract and concatenate subset information
+        for (j in c(1:nrow(design))) {
+          SubsetBy[j] <- paste(design$subsetFactor[[j]]$summary, collapse = ";")
+        } 
+      } else {
+        # If not subsetted, fill the SubsetBy vector with NA values 
+        SubsetBy <- rep(NA, length(design$result.ID))
+      }
+      
+      # Append the extracted information to the initial dataframe
+      resultsets_for_experiment <- data.frame(
+        ExperimentIDs = dataset_shortname[i],
+        ResultSetIDs = design$result.ID,
+        ContrastIDs = design$contrast.ID,
+        FactorCategory = design$factor.category,
+        ExperimentalFactors = experimental_factors,
+        BaselineFactors = baseline_factors,
+        Subsetted = design$isSubset,
+        SubsetBy = SubsetBy,
+        stringsAsFactors = FALSE
+      )
+      
+      resultsets_toscreen <- rbind(resultsets_toscreen, resultsets_for_experiment)
+    }
+  }
+  
+  # Add empty columns to store screening notes 
+  resultsets_toscreen <- cbind(
+    resultsets_toscreen,
+    Include = vector(mode = "character", length = nrow(resultsets_toscreen)),
+    WrongBaseline = vector(mode = "character", length = nrow(resultsets_toscreen)),
+    ResultsNotRegionSpecific = vector(mode = "character", length = nrow(resultsets_toscreen)),
+    ReAnalyze = vector(mode = "character", length = nrow(resultsets_toscreen)),
+    stringsAsFactors = FALSE
+  )
+  
+  # Export the final dataframe 
+  write.csv(resultsets_toscreen, "ResultSets_toScreen.csv")
+  
+  print("The ResultSets for your datasets have been outputted into ResultSets_toScreen.csv")
+}
+
+# Function use
+GettingResultSetInfoForDatasets(ExperimentIDs)
+```
+
+
+### 5) Downloading the DE Results from Each Dataset
+
+
+```{r}
+# Create a function to download DE results and extract Log2FC and T-statistics 
+# for contrasts of interest 
+DownloadingDEResults <- function(ResultSets_contrasts){
+  
+  # Some ResultSets have more than one statistical contrast so they present more than 
+  # once in the dataframe. We only want the contrast from the unique ResultSet ID
+
+  UniqueResultSetIDs <- unique(ResultSets_contrasts$ResultSetIDs) 
+  # GSE53784 has the same ResultSetID but different ContrastID for 2 different 
+  # contrasts with different viruses 
+  
+  print("These are the ResultSets that you identified as being of interest")
+  print(UniqueResultSetIDs)
+  
+  differentials <- UniqueResultSetIDs %>%
+    # The function returns a list because single experiment may have multiple 
+    # resultSets
+    # Only take the first element of the output
+    # The "resultSet" argument is used to directly access the results we need
+    lapply(function(x) {get_differential_expression_values(resultSets = x)[[1]]})
+  
+  # Some datasets might not have all the advertised differential expression results
+  # due to a variety of factors so we need to remove empty differential
+  # non_missing_contrasts <- sapply(differentials, function(df) nrow(df) > 0)
+  # differentials <<- differentials[non_missing_contrasts] 
+  # UniqueResultSetIDs <<- UniqueResultSetIDs[non_missing_contrasts]
+  
+  missing_contrasts <- differentials %>% sapply(nrow) %>% {.==0}
+  differentials <<- differentials[!missing_contrasts]
+  UniqueResultSetIDs <<- UniqueResultSetIDs[!missing_contrasts]
+  
+  
+  print("These are the ResultSets that had DE results:")
+  print(UniqueResultSetIDs)
+  
+  print("Your DE results for each of the ResultSets are stored in object differentials.")
+  print("This object is structured as a list of dataframes.")
+  print("Each element in the list represents a ResultSet, with the dataframe containing DE results")
+  
+  # Extract the effect sizes of contrasts of interest
+  print("These are the columns of effect sizes (Log2FC) for our contrasts of interest")
+  Contrasts_Log2FC <<- paste("contrast_", ResultSets_contrasts$ContrastIDs, 
+                             "_log2fc", sep = "")
+  print(Contrasts_Log2FC)
+  
+  # Extract the T-statistics of contrasts of interest for calculating sampling variances
+  print("These are the columns of T-statistics for our contrasts of interest")
+  Contrasts_Tstat <<- paste("contrast_", ResultSets_contrasts$ContrastIDs,
+                            "_tstat", sep = "")
+  print(Contrasts_Tstat)
+  }
+
+ResultSets_contrasts <- read.csv("ResultSets_Screened.csv", 
+                                header = TRUE, stringsAsFactors = FALSE)
+
+# Function use
+DownloadingDEResults(ResultSets_contrasts)
+
+str(differentials)
+```
+
+
+```{r}
+# Create a function to save DE results for each ResultSet
+SavingGemmaDEResults_forEachResultSet <- function(differentials, 
+                                                  UniqueResultSetIDs, 
+                                                  ResultSets_contrasts){
+   for (i in c(1:length(differentials))){
+    
+    ThisResultSet<-UniqueResultSetIDs[i]
+    
+    # Pull out the dataset ID from our other dataframe
+    # Since some datasets have multiple ResultSets, we just grab the dataset ID 
+    # from the first entry
+    ThisDataSet<-ResultSets_contrasts$ExperimentID[ResultSets_contrasts$ResultSetIDs==ThisResultSet][1] 
+    
+    # Export the DE results for the ResultSets
+    write.csv(differentials[[i]], paste("DEResults_", ThisDataSet, "_", ThisResultSet, ".csv", sep=""))
+    
+    rm(ThisDataSet, ThisResultSet)
+  }
+}
+
+# Function use
+SavingGemmaDEResults_forEachResultSet(differentials, 
+                                      UniqueResultSetIDs,
+                                      ResultSets_contrasts)
+
+
+```
+
+
+### 6) Filter of DE results for rows with good gene annotation
+
+```{r}
+# Create a function to filter for rows with good gene annotation 
+FilteringDEResults_GoodAnnotation <- function(DE_Results){
+  
+  print("# of rows in results")
+  print(nrow(DE_Results))
+  
+  print("# of rows with missing NCBI annotation:")
+  print(sum(DE_Results$NCBIid == "" | DE_Results$NCBIid == "null", na.rm = TRUE))
+  
+  print("# of rows with NA NCBI annotation:")
+  print(sum(is.na(DE_Results$NCBIid)))
+  
+  print("# of rows with missing Gene Symbol annotation:")
+  print(sum(DE_Results$GeneSymbol == ""| DE_Results$GeneSymbol == "null", na.rm = TRUE))
+  
+  print("# of rows mapped to multiple NCBI_IDs:")
+  print(length(grep('\\|', DE_Results$NCBIid)))
+  
+  print("# of rows mapped to multiple Gene Symbols:")
+  print(length(grep('\\|', DE_Results$GeneSymbol)))
+  
+  # Subset data containing rows without an NCBI EntrezID of ""
+  DE_Results_NoNA <- DE_Results[(DE_Results$NCBIid == "" | 
+                                 DE_Results$NCBIid == "null") == FALSE & 
+                                 is.na(DE_Results$NCBIid) == FALSE,]
+  
+  # Subset data annotated with a single gene (not ambiguously mapped to more 
+  # than one gene)
+  if(length(grep('\\|', DE_Results_NoNA$NCBIid)) == 0){
+    DE_Results_GoodAnnotation <- DE_Results_NoNA
+  } else {
+    # Extract only rows annotated with a single Gene Symbol (no pipe):
+    DE_Results_GoodAnnotation <- DE_Results_NoNA[-(grep('\\|', DE_Results_NoNA$NCBIid)),]
+  }
+
+  print("# of rows with good annotation")
+  print(nrow(DE_Results_GoodAnnotation))
+  
+  # Extract the DE results with good annotations
+  
+  ID <- deparse(substitute(DE_Results))
+  
+  write.csv(DE_Results_GoodAnnotation, paste(ID, "_GoodAnnotation.csv", sep = ""))
+  
+  rm(DE_Results_NoNA, DE_Results)
+  
+  return(DE_Results_GoodAnnotation)
+  
+  print("Outputted object: DE_Results_GoodAnnotation")
+}
+
+
+# Separate the DE results from object "differentials"
+DEResults_GSE30577 <- differentials[[1]]
+DEResults_GSE42264 <- differentials[[2]]
+DEResults_GSE44331 <- differentials[[3]]
+DEResults_GSE51365 <- differentials[[4]]
+DEResults_GSE53784 <- differentials[[5]]
+DEResults_GSE91074 <- differentials[[6]]
+
+# Function use
+DE_Results_GSE30577_GoodAnnotation <- FilteringDEResults_GoodAnnotation(DEResults_GSE30577)
+DE_Results_GSE42264_GoodAnnotation <- FilteringDEResults_GoodAnnotation(DEResults_GSE42264)
+DE_Results_GSE44331_GoodAnnotation <- FilteringDEResults_GoodAnnotation(DEResults_GSE44331)
+DE_Results_GSE51365_GoodAnnotation <- FilteringDEResults_GoodAnnotation(DEResults_GSE51365)
+DE_Results_GSE53784_GoodAnnotation <- FilteringDEResults_GoodAnnotation(DEResults_GSE53784)
+DE_Results_GSE91074_GoodAnnotation <- FilteringDEResults_GoodAnnotation(DEResults_GSE91074)
+
+str(DE_Results_GSE30577_GoodAnnotation)
+str(DE_Results_GSE42264_GoodAnnotation)
+str(DE_Results_GSE44331_GoodAnnotation)
+str(DE_Results_GSE51365_GoodAnnotation)
+str(DE_Results_GSE53784_GoodAnnotation)
+str(DE_Results_GSE91074_GoodAnnotation)
+```
+
+

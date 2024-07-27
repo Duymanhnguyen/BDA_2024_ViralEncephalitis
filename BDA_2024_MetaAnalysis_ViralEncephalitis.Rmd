@@ -11,8 +11,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Research Flow of Meta-Analysis of Transcriptomics Profile in 
-## Viral Encephalitis
+## Research Flow of Meta-Analysis of Transcriptomics Profile in Viral Encephalitis
 
 *Step 1:* Project set up with necessary packages
 
@@ -27,12 +26,12 @@ GSE53784, GSE91074
 
 *Step 3:* Assess gene expression range 
 
-(Some datasets, especially Agilent microarray datasets, were normalized incorrectly,
-which may require re-normalization)
+Some datasets, especially Agilent microarray datasets, were normalized incorrectly,
+which may require re-normalization.
 
 *Step 4:* Extract statistical contrasts of differential analysis in the datasets
 
-(These statistical contrasts allow us to check if the differential analyses are:
+These statistical contrasts allow us to check if the differential analyses are:
 
 - Subsetted by brain region 
 
@@ -40,7 +39,7 @@ which may require re-normalization)
 
 - Set up in an appropriate manner with the reference group
 
-Based on the statistical contrasts, we might need to re-run the differential analysis)
+Based on the statistical contrasts, we might need to re-run the differential analysis
 
 *Step 5:* Download the differential expression (DE) results from each dataset 
 
@@ -57,6 +56,18 @@ DE results need to be collapsed to one result per gene.
 Standard error of Log2FC = Log2FC/T-statistics
 
 Sampling variance = Average of standard error of each gene^2
+
+*Step 9:* Align DE results from same models (either from mouse model or rat model)
+
+As DE results from different datasets are in slightly different orders due to 
+various experimental factors, we want to align these results so that the DE results 
+from each dataset are columns, with each row representing a different gene.
+
+*Step 10:* Align DE results from different models (combine DE results from both 
+mouse model and rat model using the ortholog database from Jackson Lab)
+
+*Step 11*: Compare Log2FC across datasets with correlation matrix and hierarchically 
+clustered heatmap
 
 
 ### 1) Project Set Up
@@ -85,6 +96,9 @@ devtools:: install_github("PavlidisLab/gemma.R", force = T)
 install.packages("plyr")
 install.packages("tidyverse")
 install.packages("writexl")
+install.packages("pheatmap")
+install.packages("RColorBrewer")
+install.packages("viridis")
 ```
 
 
@@ -94,6 +108,9 @@ library("gemma.R")
 library("plyr")
 library("tidyverse")
 library("writexl")
+library("pheatmap")
+library("RColorBrewer")
+library("viridis")
 
 # Check loaded packages 
 (.packages())
@@ -186,6 +203,7 @@ Through process of inclusion/exclusion criteria, 6 datasets are included in the
 meta-analysis, including: GSE30577, GSE42264, GSE44331, GSE51365, GSE53784,
 GSE91074.
 
+
 ### 3) Gene Expression Range Assessment
 
 ```{r func_check_gene_express}
@@ -245,6 +263,7 @@ CheckGeneExpressionRange("GSE91074") # Min: 2.8 | Max: 14.3 | Affymetrix Array
 
 Gene expression of all 6 datasets seem to be within normal range and have appropriate
 distribution.
+
 
 ### 4) Extraction of Statistical Contrasts of Differential Analysis in Each Dataset
 
@@ -382,6 +401,7 @@ ExperimentIDs <- c("GSE30577", "GSE42264", "GSE44331",
 GettingResultSetInfoForDatasets(ExperimentIDs)
 ```
 
+
 ### 5) Downloading the DE Results from Each Dataset
 
 ```{r func_download_DEResults}
@@ -489,6 +509,7 @@ SavingGemmaDEResults_forEachResultSet(differentials,
                                       ResultSets_contrasts)
 ```
 
+
 ### 6) Filter of DE results for rows with good gene annotation
 
 ```{r func_gene_filter}
@@ -582,6 +603,7 @@ DE_Results_GSE91074_GoodAnnotation <- FilteringDEResults_GoodAnnotation(DEResult
 # str(DE_Results_GSE53784_GoodAnnotation)
 # str(DE_Results_GSE91074_GoodAnnotation)
 ```
+
 
 ### 7) Extraction of DE results for the contrasts of interest
 
@@ -933,6 +955,7 @@ CollapsingDEResults_OneResultPerGene<-function(GSE_ID,
 }
 ```
 
+
 ```{r prep_col_name, cache = TRUE}
 # Prepare "NamesOfFoldChangeColumns" and "NamesOfTstatColumns" arguments for  
 # extracting DE results of contrasts of interest
@@ -1015,4 +1038,288 @@ Collapsing_DEResults_GSE91074 <- CollapsingDEResults_OneResultPerGene("GSE91074"
                                                                       NamesOfTstatColumns_GSE91074)
 ```
 
+
+### 9) Alignment of DE results from same models (mouse & rat)
+
+Each dataset has DE results from a slightly different list of genes.
+
+Depending on the exact tissue dissected, the sensitivity of the transcriptional 
+profiling platform, the representation on the transcriptional profiling platform 
+(for microarray), and the experimental conditions, the DE results from different 
+datasets will also be in a slightly different order.
+
+We want to align these results so that the DE results from each dataset are columns, 
+with each row representing a different gene.
+
+- GSE30577 - Mouse model
+
+- GSE42264 - Mouse model
+
+- GSE44331 - Mouse model
+
+- GSE51365 - Mouse model
+
+- GSE53784 - Mouse model
+
+- GSE91074 - Mouse model
+
+Since there are only mouse models, we would create one aligning function.
+If there are both mouse and rat models, we would have to create two aligning 
+functions, one for the mouse and one for the rat.
+
+```{r func_align_same}
+# Create a function to align all mouse DE results from different datasets into
+# a single dataframe for Log2FC and SV
+AligningMouseDatasets <- function(ListOfMouseDEResults){
+  
+  # Create a list to store the log2FC 
+  Mouse_MetaAnalysis_FoldChange_Dfs <- list()
+  
+  # Loop through all mouse DE results
+  for(i in c(1:length(ListOfMouseDEResults))){
+    # When did the row name become IDs?
+    # Extract the Log2FC values from each dataset and put them into separate list
+    # The element from the "Collapsing_DEResults_" has the format of row names
+    # as Entrez Gene ID and columns containing Log2FC values
+    Mouse_MetaAnalysis_FoldChange_Dfs[[i]] <- data.frame(Mouse_EntrezGene.ID = row.names(ListOfMouseDEResults[[i]][[1]]),
+                                                         ListOfMouseDEResults[[i]][[1]], 
+                                                         stringsAsFactors = FALSE)
+  }
+  
+  # Print the structure of the Log2FC lists
+  print("Mouse_MetaAnalysis_FoldChange_Dfs:")
+  print(str(Mouse_MetaAnalysis_FoldChange_Dfs))
+  
+  # ALign the DE results by Entrez Gene ID and turn them into a single dataframe
+  # join_all can be used for object of list class
+  Mouse_MetaAnalysis_FoldChanges <<- join_all(Mouse_MetaAnalysis_FoldChange_Dfs, 
+                                              by = "Mouse_EntrezGene.ID", 
+                                              type = "full")
+
+  # Print the structure of the aligned Log2FC 
+  print("Mouse_MetaAnalysis_FoldChanges:")
+  print(str(Mouse_MetaAnalysis_FoldChanges))
+  
+  # Create a list to store the SV 
+  Mouse_MetaAnalysis_SV_Dfs <- list()
+  
+  # Loop through all mouse DE results 
+  for(i in c(1:length(ListOfMouseDEResults))){
+    # Extract the SV values from each dataset and put them into separate list
+    # The element from the "Collapsing_DEResults_" has the format of row names
+    # as Entrez Gene ID and columns containing SV values
+    Mouse_MetaAnalysis_SV_Dfs[[i]] <- data.frame(Mouse_EntrezGene.ID = row.names(ListOfMouseDEResults[[i]][[4]]),
+                                                 ListOfMouseDEResults[[i]][[4]], 
+                                                 stringsAsFactors = FALSE)
+  }
+  
+  # Print the structure of the SV lists
+  print("Mouse_MetaAnalysis_SV_Dfs:")
+  print(str(Mouse_MetaAnalysis_SV_Dfs))
+  
+  # ALign the DE results by Entrez Gene ID and turn them into a single dataframe
+  # join_all can be used for object of list class
+  Mouse_MetaAnalysis_SV <<- join_all(Mouse_MetaAnalysis_SV_Dfs, 
+                                    by = "Mouse_EntrezGene.ID",
+                                    type = "full")
+
+  # Print the structure of the aligned SV 
+  print("Mouse_MetaAnalysis_SV:")
+  print(str(Mouse_MetaAnalysis_SV))
+  
+  # Remove the temporary lists of Log2FC and SV
+  rm(Mouse_MetaAnalysis_SV_Dfs, Mouse_MetaAnalysis_FoldChange_Dfs)
+}
+```
+
+
+```{r run_align_same, cache = TRUE}
+# Prepare the list of collapsed mouse DE results
+ListOfMouseDEResults <- list(Collapsing_DEResults_GSE30577, 
+                             Collapsing_DEResults_GSE42264,
+                             Collapsing_DEResults_GSE44331, 
+                             Collapsing_DEResults_GSE51365,
+                             Collapsing_DEResults_GSE53784, 
+                             Collapsing_DEResults_GSE91074)
+
+# Function use
+AligningMouseDatasets(ListOfMouseDEResults)
+```
+
+
+### 10) Alignment of DE results from different models (mouse & rat)
+
+#### Concept of *Gene Orthologs*:
+
+- *Homology* refers to biological features including genes and their products that 
+are descended from a feature present in a common ancestor.
+
+- *Homologous gene* become separated in evolution in 2 different ways:
+
+1. Separation of 2 populations with the ancestral gene into 2 species 
+
+Gene separated by *speciation* are called *orthologs*.
+
+2. Duplication of the ancestral gene within a lineage
+
+Gene separated by *gene duplication* are called *paralogs*.
+
+Ref: https://www.nlm.nih.gov/ncbi/workshops/2023-08_BLAST_evol/ortho_para.html
+
+We have the ortholog database that we downloaded from Jackson Lab on April 25, 2024.
+This database was trimmed and formatted using "FormattingRatMouseOrthologDatabase_20240425.R"
+
+```{r join_database, cache = TRUE}
+# Import the trimmed and formatted ortholog database
+MouseVsRat_NCBI_Entrez <- read.csv("MouseVsRat_NCBI_Entrez_JacksonLab_20240425.csv",
+                                   header = TRUE,
+                                   stringsAsFactors = FALSE,
+                                   row.names = 1,
+                                   colClasses = c("character", "character", "character"))
+
+# Join the ortholog database with mouse Log2FC
+Mouse_MetaAnalysis_FoldChanges_wOrthologs <- join(MouseVsRat_NCBI_Entrez, 
+                                                  Mouse_MetaAnalysis_FoldChanges,
+                                                  by = "Mouse_EntrezGene.ID",
+                                                  type = "full")
+
+# Join the ortholog database with mouse SV
+Mouse_MetaAnalysis_SV_wOrthologs <- join(MouseVsRat_NCBI_Entrez,
+                                         Mouse_MetaAnalysis_SV,
+                                         by = "Mouse_EntrezGene.ID",
+                                         type = "full")
+
+# Check the structure of the new mouse Log2FC with ortholog info
+str(Mouse_MetaAnalysis_FoldChanges_wOrthologs)
+
+# Check the structure of the new mouse SV with ortholog info
+str(Mouse_MetaAnalysis_SV_wOrthologs)
+```
+
+
+```{r , eval = FALSE}
+# If there are rat datasets, we want to join our mouse Log2FC and SV results to 
+# the rat Log2FC and SV results using the ortholog info
+
+# Join the Log2FC of the mouse datasets and rat datasets
+MetaAnalysis_FoldChanges <- join(Mouse_MetaAnalysis_FoldChanges_wOrthologs,
+                                 Rat_MetaAnalysis_FoldChanges,
+                                 by = "Rat_EntrezGene.ID",
+                                 type = "full")
+
+# Check the structure of the joined mouse and rat Log2FC with ortholog info
+str(MetaAnalysis_FoldChanges)
+ 
+# Join the SV of the mouse datasets and rat datasets
+MetaAnalysis_SV <- join(Mouse_MetaAnalysis_SV_wOrthologs,
+                        Rat_MetaAnalysis_FoldChanges,
+                        by = "Rat_EntrezGene.ID",
+                        type = "full")
+
+# Check the structure of the joined mouse and rat SV with ortholog info
+str(MetaAnalysis_SV)
+```
+
+
+```{r}
+# If there are no rat dataset, we rename the dataframes so the pipeline code works
+MetaAnalysis_FoldChanges <- Mouse_MetaAnalysis_FoldChanges_wOrthologs
+MetaAnalysis_SV <- Mouse_MetaAnalysis_SV_wOrthologs
+
+# Rename Mouse_Rat Entrez annotation for Log2FC dataframe
+MetaAnalysis_FoldChanges$MouseVsRat_EntrezGene.ID <- paste(MetaAnalysis_FoldChanges$Mouse_EntrezGene.ID,
+                                                           MetaAnalysis_FoldChanges$Rat_EntrezGene.ID, 
+                                                           sep="_")
+
+# Rename Mouse_Rat Entrez annotation for SV dataframe
+MetaAnalysis_SV$MouseVsRat_EntrezGene.ID <- paste(MetaAnalysis_SV$Mouse_EntrezGene.ID, 
+                                                  MetaAnalysis_SV$Rat_EntrezGene.ID, 
+                                                  sep="_")
+
+# Check the structure of the Log2FC dataframe
+str(MetaAnalysis_FoldChanges)
+
+# Check the structure of the SV dataframe 
+str(MetaAnalysis_SV)
+```
+
+
+### 11) Comparison of Log2FC across datasets
+
+```{r}
+# Check the column names in the MetaAnalysis dataframes
+colnames(MetaAnalysis_FoldChanges)
+```
+
+There are different ways to plot relationships across datasets:
+
+1. Rank-rank hypergeometric overlap plots 
+
+2. Hierarchically clustered heatmaps
+
+We can generally compare the DE results associated with different contrasts 
+using a scatter plot and correlation analysis.
+
+```{r}
+# Create a correlation matrix for Log2FC across datasets
+# "pairwise.complete.obs" ignore any rows of DE results that do not have Log2FC 
+# for one of our columns
+MetaAnalysis_CorMatrix_FoldChanges <- cor(as.matrix(MetaAnalysis_FoldChanges[,-c(1:3)]), 
+                                                    use = "pairwise.complete.obs",
+                                                    method = "spearman")
+# Check the correlation matrix
+MetaAnalysis_CorMatrix_FoldChanges
+```
+
+Each cell includes the correlation coefficient reflecting the similarity of the 
+effect sizes for the comparison of between the contrast in the row and the according
+contrast in the column.
+
+Correlation coefficient ranges between -1 to 1, with -1 being a perfect negative 
+correlation and +1 being a perfect positive correlation
+
+```{r}
+# Illustrate the correlation matrix with hierarchically clustered heatmap
+
+# Blues Palette
+pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
+         display_numbers = TRUE,
+         fontsize = 10,
+         number_format = "%.2f", 
+         color = colorRampPalette(brewer.pal(5, "Blues"))(100),
+         border_color = "black",
+         number_color = "black")
+
+# Oranges Palette
+pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
+         display_numbers = TRUE,
+         fontsize = 10,
+         number_format = "%.2f", 
+         color = colorRampPalette(brewer.pal(5, "Oranges"))(100),
+         border_color = "black",
+         number_color = "black")
+
+# Blues-Yellows Palette
+pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
+         display_numbers = TRUE,
+         fontsize = 10,
+         number_format = "%.2f", 
+         color = hcl.colors(5, "BluYl"),
+         border_color = "black",
+         number_color = "black")
+
+# Viridis Palette
+pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
+         display_numbers = TRUE,
+         fontsize = 10,
+         number_format = "%.2f", 
+         color = viridis(5),
+         border_color = "black",
+         number_color = "black")
+
+# In this heatmap, white/yellow indicates a more positive correlation
+# The groups are placed in order by similarity, as determined by hierarchical clustering
+# The lines ("tree branches") on the left and top illustrate that similarity (clustering) 
+# using a "dendrogram"
+```
 

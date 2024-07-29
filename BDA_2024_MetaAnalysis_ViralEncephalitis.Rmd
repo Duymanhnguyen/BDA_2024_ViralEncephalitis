@@ -94,6 +94,7 @@ if(!requireNamespace("devtools", quietly = T)){
 }
 devtools:: install_github("PavlidisLab/gemma.R", force = T)
 install.packages("plyr")
+install.packages("metafor")
 install.packages("tidyverse")
 install.packages("writexl")
 install.packages("pheatmap")
@@ -106,6 +107,7 @@ install.packages("viridis")
 # Load packages
 library("gemma.R")
 library("plyr")
+library("metafor")
 library("tidyverse")
 library("writexl")
 library("pheatmap")
@@ -1317,9 +1319,193 @@ pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          border_color = "black",
          number_color = "black")
 
-# In this heatmap, white/yellow indicates a more positive correlation
 # The groups are placed in order by similarity, as determined by hierarchical clustering
 # The lines ("tree branches") on the left and top illustrate that similarity (clustering) 
 # using a "dendrogram"
 ```
 
+
+### 12) Meta-analysis 
+
+The meta-analysis is performed using the effect sizes (Log2FC) and sampling variances
+(SV) for each gene stored in the objects *MetaAnalysis_FoldChanges* and *MetaAnalysis_SV*.
+
+For any particular gene, it is likely that some datasets may be missing DE results.
+This is especially true for genes that have low levels of expression and may not 
+be detected by less sensitive assays. It is also likely to be true for genes that 
+were discovered more recently (i.e., not targeted by older microarray platforms)
+or that lack a clear ortholog in rat/mouse.
+
+We can only run a meta-analysis if there DE results from more than 1 statistical
+contrast. Since the DE results from the same study (dataset) are often artificially
+correlated (especially if they use the same control group as the comparison), we 
+would prefer that there are results from more than 1 dataset (not just more than
+1 statistical contrast)
+
+Before the meta-analysis, we need to decide the minimum number of DE results allowed
+for a gene to be included.
+
+```{r}
+# Calculate the number of NAs (the number of statistical contrasts lacking DE
+# results) in each row (for each gene)
+MetaAnalysis_FoldChanges_NAsPerRow <- apply(MetaAnalysis_FoldChanges[,-c(1:3)], 
+                                            1, 
+                                            function(y) sum(is.na(y)))
+
+# Visualize the distribution of the NAs with histogram
+hist(MetaAnalysis_FoldChanges_NAsPerRow)
+
+# Viusalize the distribution of the NAs with table 
+table(MetaAnalysis_FoldChanges_NAsPerRow)
+
+# This table tells us how many genes (rows) contain each number of NAs 
+# Ex: There are 9979 genes that contain no NA, meaning that these 9979 genes can 
+# be found across all datasets
+# Ex: There are 5767 genes that contain 1 NA in 1 of the 8 contrasts
+```
+
+
+```{r}
+# Create a function to run the meta-analysis
+RunBasicMetaAnalysis <- function(NumberofComparisons,
+                                 CutOffForNAs,
+                                 MetaAnalysis_FoldChanges,
+                                 MetaAnalysis_SV){
+  
+  # Calculate the number of NAs (the number of statistical contrasts lacking DE
+  # results) in each row (for each gene)
+  MetaAnalysis_FoldChanges_NAsPerRow <- apply(MetaAnalysis_FoldChanges[,-c(1:3)], 
+                                              1, 
+                                              function(y) sum(is.na(y)))
+  
+  # Print the number of NAs per gene
+  print("Table of # of NAs per Row (Gene):")
+  print(table(MetaAnalysis_FoldChanges_NAsPerRow))
+  
+  # Filter the genes with too many NAs
+  MetaAnalysis_FoldChanges_ForMeta <- MetaAnalysis_FoldChanges[MetaAnalysis_FoldChanges_NAsPerRow < CutOffForNAs,]
+  MetaAnalysis_SV_ForMeta <- MetaAnalysis_SV[MetaAnalysis_FoldChanges_NAsPerRow < CutOffForNAs,]
+  
+  # Print the structure of the filtered FC
+  print("MetaAnalysis_FoldChanges_ForMeta:")
+  print(str(MetaAnalysis_FoldChanges_ForMeta))
+  
+  # Print the structure of the filtered SV
+  print("MetaAnalysis_SV_ForMeta:")
+  print(str(MetaAnalysis_SV_ForMeta))
+  
+  # Create a matrix with 6 columns filled with NAs to store the meta-analysis results
+  metaOutput <- matrix(NA, nrow(MetaAnalysis_FoldChanges_ForMeta), 6)
+  
+  # Loop through each gene to perform meta-analysis
+  for(i in c(1:nrow(MetaAnalysis_FoldChanges_ForMeta))){
+    
+    # Extract the Log2FC and SV value for the current gene in numeric format
+    # Remove the annotation columns prior to extraction
+    fc <- as.numeric(MetaAnalysis_FoldChanges_ForMeta[i, -c(1:3)])
+    sv <- as.numeric(MetaAnalysis_SV_ForMeta[i, -c(1:3)])
+    
+    # Perform meta-analysis using random-effect model that treat Log2FC across 
+    # studies as random effects
+    
+    # Set the flag as FALSE 
+    # This flag is used to determine if the current iteration should be skipped
+    # due to an error
+    skip_to_next <- FALSE
+    
+    # The "tryCatch" function will execute the code within "{}" block. If an error
+    # occurs, the code in the "error" block is executed
+    tryCatch({
+      # Perform meta-analysis that treat Log2FC across studies as random effects
+      TempMeta <- rma(fc, sv)
+      # Store estimated Log2FC
+      metaOutput[i,1] <- TempMeta$b
+      # Store standard error of estimate
+      metaOutput[i,2] <- TempMeta$se
+      # Store p-value
+      metaOutput[i,3] <- TempMeta$pval
+      # Store lower bound of the confidence interval
+      metaOutput[i,4] <- TempMeta$ci.lb
+      # Store the upper bound of the confidence interval
+      metaOutput[i,5] <- TempMeta$ci.ub
+      # Store the number of comparisons with available data
+      metaOutput[i,6] <- NumberOfComparisons-sum(is.na(fc))
+    },
+      # If an error occurs during the meta-analysis, the "error" function sets
+      # "skip_to_next" to TRUE
+      error = function(e){skip_to_next <<- TRUE})
+    
+    # If "skip_to_next" is TRUE, the "next" statement skips the current iteration
+    # and move to the next gene 
+    if(skip_to_next) next
+    
+    # Remove temporary variables
+    rm(fc, sv)
+  } 
+  
+  # Name the columns in the output
+  colnames(metaOutput) <- c("Log2FC_estimate", 
+                            "SE", 
+                            "pval", 
+                            "CI_lb", 
+                            "CI_ub", 
+                            "Number_Of_Comparisons")
+  
+  # Assign the combined mouse-rat entrez ID as row names of the output 
+  row.names(metaOutput) <- MetaAnalysis_FoldChanges_ForMeta[,3]
+  
+  # Print the structure of the output
+  print("metaOutput:")
+  print(str(metaOutput))
+  
+  # Print the top of the output 
+  print("Top of metaOutput:")
+  print(head(metaOutput))
+  
+  # Print the bottom of the output 
+  print("Bottom of metaOutput:")
+  print(tail(metaOutput))
+  
+  # Change the format of the output to dataframe for the final list
+  metaOutput <- as.data.frame(metaOutput)
+  
+  # Return the output and the annotation as separated lists
+  return(list(metaOutput = metaOutput, 
+              MetaAnalysis_Annotation = MetaAnalysis_FoldChanges_ForMeta[, c(1:3)]))
+}
+```
+
+
+```{r}
+# Set up number of comparisons and cut off for NAs
+# The number of NA = CutOffForNAs - 1
+# Ex: 0 NA => CutOffForNA = 1
+# Ex: 1 NA => CutOffForNA = 2
+
+# There are 8 contrasts and we want genes that are available in at least 7 contrasts
+NumberOfComparisons = 8
+CutOffForNAs = 2
+
+# There are 8 contrasts and we want genes that are available in all 8 contrasts
+NumberOfComparisons = 8
+CutOffForNAs = 1
+
+# Function use 
+MetaAnalysis_Results_1NA <- suppressWarnings(
+  RunBasicMetaAnalysis(NumberOfComparisons,
+                       CutOffForNAs,
+                       MetaAnalysis_FoldChanges,
+                       MetaAnalysis_SV)
+)
+
+MetaAnalysis_Results_0NA <- suppressWarnings(
+  RunBasicMetaAnalysis(NumberOfComparisons,
+                       CutOffForNAs,
+                       MetaAnalysis_FoldChanges,
+                       MetaAnalysis_SV)
+)
+
+# Separate the meta-analysis output and annotation 
+metaOutput_0NA <- MetaAnalysis_Results_0NA[[1]]
+MetaAnalysis_Annotation <- MetaAnalysis_Results_0NA[[2]]
+```

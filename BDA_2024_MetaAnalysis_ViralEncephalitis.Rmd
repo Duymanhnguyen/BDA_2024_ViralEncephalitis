@@ -1478,12 +1478,9 @@ RunBasicMetaAnalysis <- function(NumberofComparisons,
 
 ```{r}
 # Set up number of comparisons and cut off for NAs
-<<<<<<< HEAD
 # The number of NA = CutOffForNAs - 1
 # Ex: 0 NA => CutOffForNA = 1
 # Ex: 1 NA => CutOffForNA = 2
-=======
->>>>>>> 960023e91de4ae3889806aa04e6412e5eaa22d66
 
 # There are 8 contrasts and we want genes that are available in at least 7 contrasts
 NumberOfComparisons = 8
@@ -1511,8 +1508,4 @@ MetaAnalysis_Results_0NA <- suppressWarnings(
 # Separate the meta-analysis output and annotation 
 metaOutput_0NA <- MetaAnalysis_Results_0NA[[1]]
 MetaAnalysis_Annotation <- MetaAnalysis_Results_0NA[[2]]
-<<<<<<< HEAD
-=======
-
->>>>>>> 960023e91de4ae3889806aa04e6412e5eaa22d66
 ```

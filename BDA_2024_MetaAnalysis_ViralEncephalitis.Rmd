@@ -1207,7 +1207,7 @@ str(Mouse_MetaAnalysis_SV_wOrthologs)
 ```
 
 
-```{r , eval = FALSE}
+```{r join_orthologs_rat, eval = FALSE}
 # If there are rat datasets, we want to join our mouse Log2FC and SV results to 
 # the rat Log2FC and SV results using the ortholog info
 
@@ -1231,7 +1231,7 @@ str(MetaAnalysis_SV)
 ```
 
 
-```{r}
+```{r join_orthologs_norat}
 # If there are no rat dataset, we rename the dataframes so the pipeline code works
 MetaAnalysis_FoldChanges <- Mouse_MetaAnalysis_FoldChanges_wOrthologs
 MetaAnalysis_SV <- Mouse_MetaAnalysis_SV_wOrthologs
@@ -1256,7 +1256,7 @@ str(MetaAnalysis_SV)
 
 ### 11) Comparison of Log2FC across datasets
 
-```{r}
+```{r col_names_meta}
 # Check the column names in the MetaAnalysis dataframes
 colnames(MetaAnalysis_FoldChanges)
 ```
@@ -1270,7 +1270,7 @@ There are different ways to plot relationships across datasets:
 We can generally compare the DE results associated with different contrasts 
 using a scatter plot and correlation analysis.
 
-```{r}
+```{r cor_matrix, cache = TRUE}
 # Create a correlation matrix for Log2FC across datasets
 # "pairwise.complete.obs" ignore any rows of DE results that do not have Log2FC 
 # for one of our columns
@@ -1288,7 +1288,7 @@ contrast in the column.
 Correlation coefficient ranges between -1 to 1, with -1 being a perfect negative 
 correlation and +1 being a perfect positive correlation
 
-```{r}
+```{r heatmap, cache = TRUE}
 # Illustrate the correlation matrix with hierarchically clustered heatmap
 
 # Blues Palette
@@ -1353,7 +1353,7 @@ would prefer that there are results from more than 1 dataset (not just more than
 Before the meta-analysis, we need to decide the minimum number of DE results allowed
 for a gene to be included.
 
-```{r}
+```{r cal_NA_meta, cache = TRUE}
 # Calculate the number of NAs (the number of statistical contrasts lacking DE
 # results) in each row (for each gene)
 MetaAnalysis_FoldChanges_NAsPerRow <- apply(MetaAnalysis_FoldChanges[,-c(1:3)], 
@@ -1373,7 +1373,7 @@ table(MetaAnalysis_FoldChanges_NAsPerRow)
 ```
 
 
-```{r}
+```{r func_meta}
 # Create a function to run the meta-analysis
 RunBasicMetaAnalysis <- function(NumberofComparisons,
                                  CutOffForNAs,
@@ -1479,12 +1479,14 @@ RunBasicMetaAnalysis <- function(NumberofComparisons,
   
   # Return the output and the annotation as separated lists
   return(list(metaOutput = metaOutput, 
-              MetaAnalysis_Annotation = MetaAnalysis_FoldChanges_ForMeta[, c(1:3)]))
+              MetaAnalysis_Annotation = MetaAnalysis_FoldChanges_ForMeta[, c(1:3)],
+              MetaAnalysis_FoldChanges_ForMeta = MetaAnalysis_FoldChanges_ForMeta,
+              MetaAnalysis_SV_ForMeta = MetaAnalysis_SV_ForMeta))
 }
 ```
 
 
-```{r}
+```{r run_meta, cache = TRUE}
 # Set up number of comparisons and cut off for NAs
 # The number of NA = CutOffForNAs - 1
 # Ex: 0 NA => CutOffForNA = 1
@@ -1502,16 +1504,16 @@ CutOffForNAs = 1
 
 # Meta-analysis with 1 NA
 MetaAnalysis_Results_1NA <- suppressWarnings(
-  RunBasicMetaAnalysis(NumberOfComparisons,
-                       CutOffForNAs,
+  RunBasicMetaAnalysis(NumberOfComparisons = 8,
+                       CutOffForNAs = 2,
                        MetaAnalysis_FoldChanges,
                        MetaAnalysis_SV)
 )
 
 # Meta-analysis with 0 NA
 MetaAnalysis_Results_0NA <- suppressWarnings(
-  RunBasicMetaAnalysis(NumberOfComparisons,
-                       CutOffForNAs,
+  RunBasicMetaAnalysis(NumberOfComparisons = 8,
+                       CutOffForNAs = 1,
                        MetaAnalysis_FoldChanges,
                        MetaAnalysis_SV)
 )
@@ -1521,16 +1523,20 @@ MetaAnalysis_Results_0NA <- suppressWarnings(
 # 1 NA
 metaOutput_1NA <- MetaAnalysis_Results_1NA[[1]]
 MetaAnalysis_Annotation_1NA <- MetaAnalysis_Results_1NA[[2]]
+MetaAnalysis_FoldChanges_ForMeta_1NA <- MetaAnalysis_Results_0NA[[3]]
+MetaAnalysis_SV_ForMeta_1NA <- MetaAnalysis_Results_0NA[[4]]
 
 # 0 NA
 metaOutput_0NA <- MetaAnalysis_Results_0NA[[1]]
 MetaAnalysis_Annotation_0NA <- MetaAnalysis_Results_0NA[[2]]
+MetaAnalysis_FoldChanges_ForMeta_0NA <- MetaAnalysis_Results_0NA[[3]]
+MetaAnalysis_SV_ForMeta_0NA <- MetaAnalysis_Results_0NA[[4]]
 ```
 
 
 ### 13) Correction of p-value using Benjamini-Hochberg method
 
-```{r}
+```{r join_database_2}
 # Import database containing more detailed gene annotation
 HOM_MouseVsRat <- read.csv("HOM_MouseVsRat_20240425.csv", header = TRUE, row.names = 1)
 
@@ -1543,7 +1549,7 @@ HOM_MouseVsRat$Rat_EntrezGene.ID <- as.character(HOM_MouseVsRat$Rat_EntrezGene.I
 ```
 
 
-```{r}
+```{r func_FDR}
 # Create a function to correct FDR and extract genes with FDR > 0.05 and 0.1
 FalseDiscoveryCorrection <- function(NumberOfNAs,
                                      metaOutput,
@@ -1629,11 +1635,10 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
 }
 
 # Have a few hundreds genes survived FDR < 0.05 => Add threshold for Log2FC? Common threshold? 0.5/0.2
-
 ```
 
 
-```{r}
+```{r run_FDR, cache = TRUE}
 # Function use 
 
 # Meta-analysis with 0 NA 
@@ -1657,25 +1662,29 @@ metaOutputFDR_OrderByPval_0NA <- metaOutputFDR_all_0NA[[3]]
 
 ### 14) Create forest plot for statistically significant genes 
 
-```{r}
+```{r check_range}
 # Check the range of Log2FC values
 hist(metaOutputFDR_0NA[, 1], breaks = 40) 
 ```
 
 
-```{r}
+```{r func_forest_plot}
 # Create a function to generate forest plot
-MakeForestPlots <- function(metaOutputFDR_annotated, GeneSymbol, species){
-   if (species == "Mouse") {
-    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Mouse_Symbol == GeneSymbol, ]
-  } else if (species == "Rat") {
-    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Rat_Symbol == GeneSymbol, ]
+MakeForestPlots <- function(metaOutputFDR_annotated, 
+                            GeneSymbol, 
+                            species, 
+                            MetaAnalysis_FoldChanges_ForMeta,
+                            MetaAnalysis_SV_ForMeta){
+   if (species == "Mouse"){
+    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Mouse_Symbol == GeneSymbol, ][1,]
+  } else if (species == "Rat"){
+    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Rat_Symbol == GeneSymbol, ][1,]
   } else {
     stop("Please use either 'Mouse' or 'Rat' to indicate whether you are using annotation for mouse or rat genes")
   }
   
   # Check if the gene exists
-  if (nrow(gene_row) == 0) {
+  if (nrow(gene_row) == 0){
     stop(paste("No gene found for symbol:", GeneSymbol))
   }
   
@@ -1684,16 +1693,41 @@ MakeForestPlots <- function(metaOutputFDR_annotated, GeneSymbol, species){
   RatGeneSymbol <- gene_row$Rat_Symbol
   
   # Extract Log2FC and SV 
-  fc <- as.numeric(gene_row$Log2Fc_estimate)
+  if (species == "Mouse"){
+    fc <- as.numeric(MetaAnalysis_FoldChanges_ForMeta[MetaAnalysis_FoldChanges_ForMeta$Mouse_EntrezGene.ID == gene_row$Mouse_EntrezGene.ID, -c(1:3)])
+    sv <- as.numeric(MetaAnalysis_SV_ForMeta[MetaAnalysis_FoldChanges_ForMeta$Mouse_EntrezGene.ID == gene_row$Mouse_EntrezGene.ID, -c(1:3)])
+  } else if (species == "Rat"){
+    fc <- as.numeric(MetaAnalysis_FoldChanges_ForMeta[MetaAnalysis_FoldChanges_ForMeta$Rat_EntrezGene.ID == gene_row$Rat_EntrezGene.ID, -c(1:3)])
+    sv <- as.numeric(MetaAnalysis_SV_ForMeta[MetaAnalysis_FoldChanges_ForMeta$Rat_EntrezGene.ID == gene_row$Rat_EntrezGene.ID, -c(1:3)])
+  }
   
+  # Create the filename for the output plot
+  filename <- paste("ForestPlot_Mouse_", GeneSymbol, "_Rat_", RatGeneSymbol, ".png", sep = "")
+  
+  # Open a PNG device with specified resolution
+  png(filename, height = 5, width = 8, units = "in", res = 300)
+  
+  # Create the forest plot
+  forest.rma(rma(fc, sv), 
+             slab = colnames(MetaAnalysis_FoldChanges_ForMeta)[-c(1:3)], 
+             xlim = c(-5, 5), 
+             cex = 0.75)
+  
+  # Add labels to the plot
+  mtext(paste("Mouse:", GeneSymbol, "_Rat:", RatGeneSymbol, sep = ""), 
+        line = -1.5, 
+        cex = 1.5)
+  
+  # Close the PNG device
+  dev.off()
 }
+```
 
 
-
-for(i in c(1:length(differentials))){
-    print(sum(is.na(differentials[[i]][,8])))
-}
-
-
-apply(Mouse_MetaAnalysis_FoldChanges, 1, function(y) sum(is.na(y)))
+```{r run_forest_plot, cache = TRUE}
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Cdhr1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
 ```

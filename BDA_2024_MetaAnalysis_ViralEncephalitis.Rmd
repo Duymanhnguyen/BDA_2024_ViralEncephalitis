@@ -13,9 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Research Flow of Meta-Analysis of Transcriptomics Profile in Viral Encephalitis
 
-*Step 1:* Project set up with necessary packages
+**Step 1:** Project set up with necessary packages
 
-*Step 2:* Search for dataset in Gemma using individual search terms, including:
+**Step 2:** Search for dataset in Gemma using individual search terms, including:
 
 - Relevant search terms
 
@@ -24,12 +24,12 @@ knitr::opts_chunk$set(echo = TRUE)
 Datasets included for meta-analysis: GSE30577, GSE42264, GSE44331, GSE51365,
 GSE53784, GSE91074
 
-*Step 3:* Assess gene expression range 
+**Step 3:** Assess gene expression range 
 
 Some datasets, especially Agilent microarray datasets, were normalized incorrectly,
 which may require re-normalization.
 
-*Step 4:* Extract statistical contrasts of differential analysis in the datasets
+**Step 4:** Extract statistical contrasts of differential analysis in the datasets
 
 These statistical contrasts allow us to check if the differential analyses are:
 
@@ -41,13 +41,13 @@ These statistical contrasts allow us to check if the differential analyses are:
 
 Based on the statistical contrasts, we might need to re-run the differential analysis
 
-*Step 5:* Download the differential expression (DE) results from each dataset 
+**Step 5:** Download the differential expression (DE) results from each dataset 
 
-*Step 6:* Filter DE results for rows with good gene annotation
+**Step 6:** Filter DE results for rows with good gene annotation
 
-*Step 7:* Extract DE results for the contrasts of interest
+**Step 7:** Extract DE results for the contrasts of interest
 
-*Step 8:* Collapse DE results to one result per gene & Calculate standard error
+**Step 8:** Collapse DE results to one result per gene & Calculate standard error
 and sampling variance
 
 Gene expression can be measured using multiple probes (microarray). Therefore,
@@ -57,17 +57,26 @@ Standard error of Log2FC = Log2FC/T-statistics
 
 Sampling variance = Average of standard error of each gene^2
 
-*Step 9:* Align DE results from same models (either from mouse model or rat model)
+**Step 9:** Align DE results from same models (either from mouse model or rat model)
 
 As DE results from different datasets are in slightly different orders due to 
 various experimental factors, we want to align these results so that the DE results 
 from each dataset are columns, with each row representing a different gene.
 
-*Step 10:* Align DE results from different models (combine DE results from both 
+**Step 10:** Align DE results from different models (combine DE results from both 
 mouse model and rat model using the ortholog database from Jackson Lab)
 
-*Step 11*: Compare Log2FC across datasets with correlation matrix and hierarchically 
+**Step 11:** Compare Log2FC across datasets with correlation matrix and hierarchically 
 clustered heatmap
+
+**Step 12:** Meta-analysis with random effect models
+
+Meta-analysis is performed using effect sizes (Log2FC) and sampling variances (SV)
+
+**Step 13:** Correct p-value for each gene using Benjamini-Hochberg method for 
+False Discovery Rate (FDR or q-value)
+
+**Step 14:** Create forest plots for statistically significant genes 
 
 
 ### 1) Project Set Up
@@ -1647,6 +1656,9 @@ metaOutputFDR_all_0NA <- FalseDiscoveryCorrection(0,
                                                  HOM_MouseVsRat,
                                                  MetaAnalysis_Annotation_0NA)
 
+# Because all 6 datasets are from mouse models, we would focus more on mouse
+# gene symbols
+
 # Separate the FDR outputs into individual objects 
 
 # FDR output only 
@@ -1660,7 +1672,7 @@ metaOutputFDR_OrderByPval_0NA <- metaOutputFDR_all_0NA[[3]]
 ```
 
 
-### 14) Create forest plot for statistically significant genes 
+### 14) Forest plots for statistically significant genes 
 
 ```{r check_range}
 # Check the range of Log2FC values
@@ -1710,7 +1722,7 @@ MakeForestPlots <- function(metaOutputFDR_annotated,
   # Create the forest plot
   forest.rma(rma(fc, sv), 
              slab = colnames(MetaAnalysis_FoldChanges_ForMeta)[-c(1:3)], 
-             xlim = c(-5, 5), 
+             xlim = c(-7, 7), 
              cex = 0.75)
   
   # Add labels to the plot
@@ -1725,9 +1737,66 @@ MakeForestPlots <- function(metaOutputFDR_annotated,
 
 
 ```{r run_forest_plot, cache = TRUE}
+# Function use 
+
+# Ppp2r5a
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Ppp2r5a",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Cdhr1
 MakeForestPlots(metaOutputFDR_Annotated_0NA,
                 "Cdhr1",
                 "Mouse",
                 MetaAnalysis_FoldChanges_ForMeta_0NA,
                 MetaAnalysis_SV_ForMeta_0NA)
+
+# Sema5b
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Sema5b",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Sema7a
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Sema7a",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
 ```
+
+#### Interpretation of Forest Plots:
+
+**1. Study Labels (Left Side)**
+
+- The labels on the left side of the plot indicate the individual contrasts included
+in the meta-analysis.
+
+**2. Effect Sizes and Confidence Intervals (Right side)**
+
+- Each horizontal line represents the effect size (Log2FC) for a particular contrast
+along with its confidence interval. The squares represent the point of estimate of 
+the effect size for each contrast. The horizontal lines extending from the squares
+are the confidence intervals for the effect size.
+
+- The size of the squares represent the weight of each contrast in the meta-analysis,
+with larger square indicating more weight.
+
+
+**3. Overall Effect (Bottom)**
+
+- The diamond shape at the bottom of the plot represents the overall effect size 
+calculated from the meta-analysis (random-effects model).
+
+- The width of the diamond represents the confidence interval for the overall effect
+size.
+
+**4. X-axis (Observed Outcome)**
+
+- The x-axis shows the scale/range for the effect sizes (Log2FC).
+
+- The vertical dash line at 0 indicate no effect. Effect sizes to the left of this 
+line suggest a decrease, while those to the right suggest an increase.

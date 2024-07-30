@@ -93,6 +93,11 @@ if(!requireNamespace("devtools", quietly = T)){
   install.packages("devtools")
 }
 devtools:: install_github("PavlidisLab/gemma.R", force = T)
+
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("multtest")                                 
+
 install.packages("plyr")
 install.packages("metafor")
 install.packages("tidyverse")
@@ -113,6 +118,7 @@ library("writexl")
 library("pheatmap")
 library("RColorBrewer")
 library("viridis")
+library("multtest")
 
 # Check loaded packages 
 (.packages())
@@ -1180,6 +1186,8 @@ MouseVsRat_NCBI_Entrez <- read.csv("MouseVsRat_NCBI_Entrez_JacksonLab_20240425.c
                                    colClasses = c("character", "character", "character"))
 
 # Join the ortholog database with mouse Log2FC
+
+#### Problem arise here with the NA in the orthologs
 Mouse_MetaAnalysis_FoldChanges_wOrthologs <- join(MouseVsRat_NCBI_Entrez, 
                                                   Mouse_MetaAnalysis_FoldChanges,
                                                   by = "Mouse_EntrezGene.ID",
@@ -1325,7 +1333,7 @@ pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
 ```
 
 
-### 12) Meta-analysis 
+### 12) Meta-analysis with random effect models
 
 The meta-analysis is performed using the effect sizes (Log2FC) and sampling variances
 (SV) for each gene stored in the objects *MetaAnalysis_FoldChanges* and *MetaAnalysis_SV*.
@@ -1491,6 +1499,8 @@ NumberOfComparisons = 8
 CutOffForNAs = 1
 
 # Function use 
+
+# Meta-analysis with 1 NA
 MetaAnalysis_Results_1NA <- suppressWarnings(
   RunBasicMetaAnalysis(NumberOfComparisons,
                        CutOffForNAs,
@@ -1498,6 +1508,7 @@ MetaAnalysis_Results_1NA <- suppressWarnings(
                        MetaAnalysis_SV)
 )
 
+# Meta-analysis with 0 NA
 MetaAnalysis_Results_0NA <- suppressWarnings(
   RunBasicMetaAnalysis(NumberOfComparisons,
                        CutOffForNAs,
@@ -1506,12 +1517,183 @@ MetaAnalysis_Results_0NA <- suppressWarnings(
 )
 
 # Separate the meta-analysis output and annotation 
+
+# 1 NA
+metaOutput_1NA <- MetaAnalysis_Results_1NA[[1]]
+MetaAnalysis_Annotation_1NA <- MetaAnalysis_Results_1NA[[2]]
+
+# 0 NA
 metaOutput_0NA <- MetaAnalysis_Results_0NA[[1]]
-MetaAnalysis_Annotation <- MetaAnalysis_Results_0NA[[2]]
+MetaAnalysis_Annotation_0NA <- MetaAnalysis_Results_0NA[[2]]
 ```
 
+
+### 13) Correction of p-value using Benjamini-Hochberg method
 
 ```{r}
 # Import database containing more detailed gene annotation
 HOM_MouseVsRat <- read.csv("HOM_MouseVsRat_20240425.csv", header = TRUE, row.names = 1)
+
+# Check the names of the columns of the database 
+colnames(HOM_MouseVsRat)
+
+# Change the format of the column names to character
+HOM_MouseVsRat$Mouse_EntrezGene.ID <- as.character(HOM_MouseVsRat$Mouse_EntrezGene.ID)
+HOM_MouseVsRat$Rat_EntrezGene.ID <- as.character(HOM_MouseVsRat$Rat_EntrezGene.ID)
+```
+
+
+```{r}
+# Create a function to correct FDR and extract genes with FDR > 0.05 and 0.1
+FalseDiscoveryCorrection <- function(NumberOfNAs,
+                                     metaOutput,
+                                     HOM_MouseVsRat,
+                                     MetaAnalysis_Annotation){
+  
+  # Calculate the FDR (q-value) for each p-value using the Benjamini-Hochberg method
+  tempPvalAdjMeta <- mt.rawp2adjp(metaOutput[, 3], proc = c("BH"))
+  
+  # Re-order the FDR to match with the original order 
+  metaPvalAdj <- tempPvalAdjMeta$adjp[order(tempPvalAdjMeta$index), ]
+  
+  # Add the FDR column to the meta-analysis output
+  metaOutputFDR <- cbind(metaOutput, FDR = metaPvalAdj[, 2])
+  
+  # Rename the column to "FDR"
+  colnames(metaOutputFDR)[7] <- "FDR"
+  
+  # Print the structure of meta-analysis output with FDR
+  print("Meta-analysis output with FDR:")
+  print(str(metaOutputFDR))
+  
+  # Add annotations to the output
+  TempDF <- cbind(metaOutputFDR, MetaAnalysis_Annotation)
+  
+  # Add detailed gene annotations for mouse genes
+  TempDF2 <- join(TempDF, 
+                  HOM_MouseVsRat[, c(4:5, 9:11)], 
+                  by = "Mouse_EntrezGene.ID", 
+                  type = "left",
+                  match = "first")
+  
+  # Add detailed gene annotations for rat genes
+  TempDF3 <- join(TempDF2, 
+                  HOM_MouseVsRat[, c(15:16, 20:22)], 
+                  by = "Rat_EntrezGene.ID",
+                  type = "left",
+                  match = "first")
+  
+  # Save the annotated results to the meta-analysis output 
+  metaOutputFDR_annotated <- TempDF3
+  
+  # Export the annotated meta-analysis output into the working directory 
+  # (remove the row names as entrez ID have been merged into the dataframe)
+  write.csv(metaOutputFDR_annotated, 
+            paste("metaOutputFDR_Annotated_", NumberOfNAs, "NA.csv", sep = ""), 
+            row.names = FALSE)
+  
+  # Order the results by p-value 
+  # The results are ordered by p-values because close p-values can result in the same
+  # FDR due to the restriction of the algorithm (the bending of FDR)
+  metaOutputFDR_OrderbyPval <- metaOutputFDR_annotated[order(metaOutputFDR_annotated$pval), ]
+  
+  # Export the ordered, annotated meta-analysis output into the working directory 
+  # (remove the row names as entrez ID have been merged into the dataframe)
+  write.csv(metaOutputFDR_OrderbyPval, 
+            paste("metaOutputFDR_OrderedByPval_", NumberOfNAs, "NA.csv",sep = ""), 
+            row.names = FALSE)
+  
+  # Print genes with FDR < 0.1 
+  print("# of genes that are statistically significant following loose FDR correction (FDR < 0.10):")
+  print(sum(metaOutputFDR_annotated$FDR < 0.10, na.rm = TRUE))
+  
+  # Print genes with FDR < 0.05
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05):")
+  print(sum(metaOutputFDR_annotated$FDR < 0.05, na.rm = TRUE))
+  
+  # Print top results in mouse genes
+  print("Top 20 results ordered by p-values in mouse genes:")
+  print(head(metaOutputFDR_OrderbyPval$Mouse_Symbol, 20))
+  
+  # Print top results in mouse genes
+  print("Top 20 results ordered by p-values in rat genes:")
+  print(head(metaOutputFDR_OrderbyPval$Rat_Symbol, 20))
+  
+  # Return the annotated output and ordered output with FDR 
+  return(list(metaOutputFDR = metaOutputFDR,
+              metaOutputFDR_annotated = metaOutputFDR_annotated,
+              metaOutputFDR_OrderbyPval = metaOutputFDR_OrderbyPval))
+  
+  # Remove temporary objects
+  rm(tempPvalAdjMeta, metaPvalAdj, TempDF, TempDF2)
+}
+
+# Have a few hundreds genes survived FDR < 0.05 => Add threshold for Log2FC? Common threshold? 0.5/0.2
+
+```
+
+
+```{r}
+# Function use 
+
+# Meta-analysis with 0 NA 
+metaOutputFDR_all_0NA <- FalseDiscoveryCorrection(0,
+                                                 metaOutput_0NA,
+                                                 HOM_MouseVsRat,
+                                                 MetaAnalysis_Annotation_0NA)
+
+# Separate the FDR outputs into individual objects 
+
+# FDR output only 
+metaOutputFDR_0NA <- metaOutputFDR_all_0NA[[1]]
+
+# FDR output with annotations
+metaOutputFDR_Annotated_0NA <- metaOutputFDR_all_0NA[[2]]
+
+# FDR output ordered by p-values 
+metaOutputFDR_OrderByPval_0NA <- metaOutputFDR_all_0NA[[3]]
+```
+
+
+### 14) Create forest plot for statistically significant genes 
+
+```{r}
+# Check the range of Log2FC values
+hist(metaOutputFDR_0NA[, 1], breaks = 40) 
+```
+
+
+```{r}
+# Create a function to generate forest plot
+MakeForestPlots <- function(metaOutputFDR_annotated, GeneSymbol, species){
+   if (species == "Mouse") {
+    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Mouse_Symbol == GeneSymbol, ]
+  } else if (species == "Rat") {
+    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Rat_Symbol == GeneSymbol, ]
+  } else {
+    stop("Please use either 'Mouse' or 'Rat' to indicate whether you are using annotation for mouse or rat genes")
+  }
+  
+  # Check if the gene exists
+  if (nrow(gene_row) == 0) {
+    stop(paste("No gene found for symbol:", GeneSymbol))
+  }
+  
+  # Extract gene symbols
+  MouseGeneSymbol <- gene_row$Mouse_Symbol
+  RatGeneSymbol <- gene_row$Rat_Symbol
+  
+  # Extract Log2FC and SV 
+  fc <- as.numeric(gene_row$Log2Fc_estimate)
+  
+}
+
+
+
+for(i in c(1:length(differentials))){
+    print(sum(is.na(differentials[[i]][,8])))
+}
+
+
+apply(Mouse_MetaAnalysis_FoldChanges, 1, function(y) sum(is.na(y)))
 ```

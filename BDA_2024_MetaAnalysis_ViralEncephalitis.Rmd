@@ -1501,40 +1501,20 @@ RunBasicMetaAnalysis <- function(NumberofComparisons,
 # Ex: 0 NA => CutOffForNA = 1
 # Ex: 1 NA => CutOffForNA = 2
 
-# There are 8 contrasts and we want genes that are available in at least 7 contrasts
-NumberOfComparisons = 8
-CutOffForNAs = 2
-
 # There are 8 contrasts and we want genes that are available in all 8 contrasts
 NumberOfComparisons = 8
 CutOffForNAs = 1
 
 # Function use 
-
-# Meta-analysis with 1 NA
-MetaAnalysis_Results_1NA <- suppressWarnings(
-  RunBasicMetaAnalysis(NumberOfComparisons = 8,
-                       CutOffForNAs = 2,
-                       MetaAnalysis_FoldChanges,
-                       MetaAnalysis_SV)
-)
-
 # Meta-analysis with 0 NA
 MetaAnalysis_Results_0NA <- suppressWarnings(
-  RunBasicMetaAnalysis(NumberOfComparisons = 8,
-                       CutOffForNAs = 1,
+  RunBasicMetaAnalysis(NumberOfComparisons,
+                       CutOffForNAs,
                        MetaAnalysis_FoldChanges,
                        MetaAnalysis_SV)
 )
 
 # Separate the meta-analysis output and annotation 
-
-# 1 NA
-metaOutput_1NA <- MetaAnalysis_Results_1NA[[1]]
-MetaAnalysis_Annotation_1NA <- MetaAnalysis_Results_1NA[[2]]
-MetaAnalysis_FoldChanges_ForMeta_1NA <- MetaAnalysis_Results_0NA[[3]]
-MetaAnalysis_SV_ForMeta_1NA <- MetaAnalysis_Results_0NA[[4]]
-
 # 0 NA
 metaOutput_0NA <- MetaAnalysis_Results_0NA[[1]]
 MetaAnalysis_Annotation_0NA <- MetaAnalysis_Results_0NA[[2]]
@@ -1768,7 +1748,8 @@ MakeForestPlots(metaOutputFDR_Annotated_0NA,
                 MetaAnalysis_SV_ForMeta_0NA)
 ```
 
-#### Interpretation of Forest Plots:
+
+**Interpretation of Forest Plots**
 
 **1. Study Labels (Left Side)**
 

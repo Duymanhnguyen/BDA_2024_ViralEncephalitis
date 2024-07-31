@@ -1592,10 +1592,40 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
   # FDR due to the restriction of the algorithm (the bending of FDR)
   metaOutputFDR_OrderbyPval <- metaOutputFDR_annotated[order(metaOutputFDR_annotated$pval), ]
   
+  # Filter the ordered results by Log2FC threshold at 0.2
+  metaOutputFDR_OrderbyPval_Log2FC_0.2 <- metaOutputFDR_annotated %>%
+    filter(abs(Log2FC_estimate) >= 0.2) %>%
+    arrange(pval)
+  
+  # Filter the ordered results by Log2FC threshold at 1
+  metaOutputFDR_OrderbyPval_Log2FC_1.0 <- metaOutputFDR_annotated %>%
+    filter(abs(Log2FC_estimate) >= 1) %>%
+    arrange(pval)
+  
+  # Filter the ordered results by Log2FC threshold at 0.5
+  metaOutputFDR_OrderbyPval_Log2FC_0.5 <- metaOutputFDR_annotated %>%
+    filter(abs(Log2FC_estimate) >= 0.5) %>%
+    arrange(pval)
+  
   # Export the ordered, annotated meta-analysis output into the working directory 
   # (remove the row names as entrez ID have been merged into the dataframe)
   write.csv(metaOutputFDR_OrderbyPval, 
             paste("metaOutputFDR_OrderedByPval_", NumberOfNAs, "NA.csv",sep = ""), 
+            row.names = FALSE)
+  
+  # Export the ordered, annotated, filtered results at Log2FC of 0.2
+  write.csv(metaOutputFDR_OrderbyPval_Log2FC_0.2, 
+            paste("metaOutputFDR_OrderedByPval_Log2FC_0.2_", NumberOfNAs, "NA.csv",sep = ""), 
+            row.names = FALSE)
+  
+  # Export the ordered, annotated, filtered results at Log2FC of 1
+  write.csv(metaOutputFDR_OrderbyPval_Log2FC_1.0, 
+            paste("metaOutputFDR_OrderedByPval_Log2FC_1.0_", NumberOfNAs, "NA.csv",sep = ""), 
+            row.names = FALSE)
+  
+  # Export the ordered, annotated, filtered results at Log2FC of 0.5
+  write.csv(metaOutputFDR_OrderbyPval_Log2FC_0.5, 
+            paste("metaOutputFDR_OrderedByPval_Log2FC_0.5_", NumberOfNAs, "NA.csv",sep = ""), 
             row.names = FALSE)
   
   # Print genes with FDR < 0.1 
@@ -1606,24 +1636,59 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
   print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05):")
   print(sum(metaOutputFDR_annotated$FDR < 0.05, na.rm = TRUE))
   
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 0.2 :")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_0.2$FDR < 0.05, na.rm = TRUE))
+  
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 1 :")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_1.0$FDR < 0.05, na.rm = TRUE))
+  
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 0.5 :")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_0.5$FDR < 0.05, na.rm = TRUE))
+  
   # Print top results in mouse genes
   print("Top 20 results ordered by p-values in mouse genes:")
   print(head(metaOutputFDR_OrderbyPval$Mouse_Symbol, 20))
   
-  # Print top results in mouse genes
+  # Print top results in rat genes
   print("Top 20 results ordered by p-values in rat genes:")
   print(head(metaOutputFDR_OrderbyPval$Rat_Symbol, 20))
+  
+  # Print top results in mouse genes with |Log2FC| >= 0.2
+  print("Top 20 results ordered by p-values in mouse genes with |Log2FC| >= 0.2:")
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_0.2$Mouse_Symbol, 20))
+  
+  # Print top results in rat genes with |Log2FC| >= 0.2
+  print("Top 20 results ordered by p-values in rat genes with |Log2FC| >= 0.2:")
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_0.2$Rat_Symbol, 20))
+  
+  # Print top results in mouse genes with |Log2FC| >= 1
+  print("Top 20 results ordered by p-values in mouse genes with |Log2FC| >= 1:")
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_1.0$Mouse_Symbol, 20))
+  
+  # Print top results in rat genes with |Log2FC| >= 1
+  print("Top 20 results ordered by p-values in rat genes with |Log2FC| >= 1:")
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_1.0$Rat_Symbol, 20))
+  
+  # Print top results in mouse genes with |Log2FC| >= 0.5
+  print("Top 20 results ordered by p-values in mouse genes with |Log2FC| >= 0.5:")
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_0.5$Mouse_Symbol, 20))
+  
+  # Print top results in rat genes with |Log2FC| >= 0.5
+  print("Top 20 results ordered by p-values in rat genes with |Log2FC| >= 0.5:")
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_0.5$Rat_Symbol, 20))
+  
   
   # Return the annotated output and ordered output with FDR 
   return(list(metaOutputFDR = metaOutputFDR,
               metaOutputFDR_annotated = metaOutputFDR_annotated,
-              metaOutputFDR_OrderbyPval = metaOutputFDR_OrderbyPval))
+              metaOutputFDR_OrderbyPval = metaOutputFDR_OrderbyPval,
+              metaOutputFDR_OrderbyPval_Log2FC_0.2 = metaOutputFDR_OrderbyPval_Log2FC_0.2,
+              metaOutputFDR_OrderbyPval_Log2FC_1.0 = metaOutputFDR_OrderbyPval_Log2FC_1.0,
+              metaOutputFDR_OrderbyPval_Log2FC_0.5 = metaOutputFDR_OrderbyPval_Log2FC_0.5))
   
   # Remove temporary objects
   rm(tempPvalAdjMeta, metaPvalAdj, TempDF, TempDF2)
 }
-
-# Have a few hundreds genes survived FDR < 0.05 => Add threshold for Log2FC? Common threshold? 0.5/0.2
 ```
 
 
@@ -1641,14 +1706,23 @@ metaOutputFDR_all_0NA <- FalseDiscoveryCorrection(0,
 
 # Separate the FDR outputs into individual objects 
 
-# FDR output only 
+# Meta-analysis with FDR output only 
 metaOutputFDR_0NA <- metaOutputFDR_all_0NA[[1]]
 
-# FDR output with annotations
+# Meta-analysis with FDR output with annotations
 metaOutputFDR_Annotated_0NA <- metaOutputFDR_all_0NA[[2]]
 
-# FDR output ordered by p-values 
+# Meta-analysis with FDR output ordered by p-values 
 metaOutputFDR_OrderByPval_0NA <- metaOutputFDR_all_0NA[[3]]
+
+# Meta-analysis with FDR output ordered by p-values filtered by Log2FC at 0.2
+metaOutputFDR_OrderbyPval_Log2FC_0.2_0NA <- metaOutputFDR_all_0NA[[4]]
+
+# Meta-analysis with FDR output ordered by p-values filtered by Log2FC at 1
+metaOutputFDR_OrderbyPval_Log2FC_1.0_0NA <- metaOutputFDR_all_0NA[[5]]
+
+# Meta-analysis with FDR output ordered by p-values filtered by Log2FC at 0.5
+metaOutputFDR_OrderbyPval_Log2FC_0.5_0NA <- metaOutputFDR_all_0NA[[6]]
 ```
 
 
@@ -1667,10 +1741,15 @@ MakeForestPlots <- function(metaOutputFDR_annotated,
                             species, 
                             MetaAnalysis_FoldChanges_ForMeta,
                             MetaAnalysis_SV_ForMeta){
-   if (species == "Mouse"){
-    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Mouse_Symbol == GeneSymbol, ][1,]
+  
+  # "gene_row" object always return a dataframe with a lot of NA row so only row 
+  # with the least NA values across columns is extracted for "gene_row"
+  if (species == "Mouse"){
+    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Mouse_Symbol == GeneSymbol, ]
+    gene_row <- gene_row[which.max(rowSums(!is.na(gene_row))), ]
   } else if (species == "Rat"){
-    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Rat_Symbol == GeneSymbol, ][1,]
+    gene_row <- metaOutputFDR_annotated[metaOutputFDR_annotated$Rat_Symbol == GeneSymbol, ]
+    gene_row <- gene_row[which.max(rowSums(!is.na(gene_row))), ]
   } else {
     stop("Please use either 'Mouse' or 'Rat' to indicate whether you are using annotation for mouse or rat genes")
   }
@@ -1680,7 +1759,7 @@ MakeForestPlots <- function(metaOutputFDR_annotated,
     stop(paste("No gene found for symbol:", GeneSymbol))
   }
   
-  # Extract gene symbols
+  # Extract gene symbols for specific species
   MouseGeneSymbol <- gene_row$Mouse_Symbol
   RatGeneSymbol <- gene_row$Rat_Symbol
   
@@ -1702,7 +1781,7 @@ MakeForestPlots <- function(metaOutputFDR_annotated,
   # Create the forest plot
   forest.rma(rma(fc, sv), 
              slab = colnames(MetaAnalysis_FoldChanges_ForMeta)[-c(1:3)], 
-             xlim = c(-7, 7), 
+             xlim = c(-10, 10), 
              cex = 0.75)
   
   # Add labels to the plot
@@ -1716,8 +1795,10 @@ MakeForestPlots <- function(metaOutputFDR_annotated,
 ```
 
 
-```{r run_forest_plot, cache = TRUE}
+```{r run_forest_plot_1, cache = TRUE}
 # Function use 
+
+# Top genes ordered by p-values
 
 # Ppp2r5a
 MakeForestPlots(metaOutputFDR_Annotated_0NA,
@@ -1743,6 +1824,195 @@ MakeForestPlots(metaOutputFDR_Annotated_0NA,
 # Sema7a
 MakeForestPlots(metaOutputFDR_Annotated_0NA,
                 "Sema7a",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Thop1
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Thop1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Cpd
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Cpd",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Col6a1
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Col6a1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Col16a1
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Col16a1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Spcs2
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Spcs2",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+```
+
+
+```{r run_forest_plot_2, cache = TRUE}
+# Function use
+
+# Top genes ordered by p-values with |Log2FC| >= 1 
+
+# Gbp3
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Gbp3",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Ifit1
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Ifit1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Usp18
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Usp18",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# B2m
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "B2m",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Gbp2
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Gbp2",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Oasl2
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Oasl2",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Bst2
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Bst2",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Bst2
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Bst2",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Iigp1
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Iigp1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Irgm1
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Irgm1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Stat1 
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Stat1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Gbp7
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Gbp7",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Trim30a
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Trim30a",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# H2-K1 
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "H2-K1",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Ifitm3 
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Ifitm3",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Isg15
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Isg15",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Cd52
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Cd52",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Plac8
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Plac8",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Ifi44
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Ifi44",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Psmb9
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Psmb9",
+                "Mouse",
+                MetaAnalysis_FoldChanges_ForMeta_0NA,
+                MetaAnalysis_SV_ForMeta_0NA)
+
+# Psmb9
+MakeForestPlots(metaOutputFDR_Annotated_0NA,
+                "Cxcl10",
                 "Mouse",
                 MetaAnalysis_FoldChanges_ForMeta_0NA,
                 MetaAnalysis_SV_ForMeta_0NA)

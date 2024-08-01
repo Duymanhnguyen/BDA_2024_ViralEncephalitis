@@ -78,6 +78,8 @@ False Discovery Rate (FDR or q-value)
 
 **Step 14:** Create forest plots for statistically significant genes 
 
+**Step 15:** Retrieve gene function from NCBI using Entrez ID 
+
 
 ### 1) Project Set Up
 
@@ -114,6 +116,7 @@ install.packages("writexl")
 install.packages("pheatmap")
 install.packages("RColorBrewer")
 install.packages("viridis")
+install.packages("rentrez")
 ```
 
 
@@ -128,6 +131,7 @@ library("pheatmap")
 library("RColorBrewer")
 library("viridis")
 library("multtest")
+library("rentrez")
 
 # Check loaded packages 
 (.packages())
@@ -1592,13 +1596,13 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
   # FDR due to the restriction of the algorithm (the bending of FDR)
   metaOutputFDR_OrderbyPval <- metaOutputFDR_annotated[order(metaOutputFDR_annotated$pval), ]
   
-  # Filter the ordered results by Log2FC threshold at 0.2
-  metaOutputFDR_OrderbyPval_Log2FC_0.2 <- metaOutputFDR_annotated %>%
-    filter(abs(Log2FC_estimate) >= 0.2) %>%
+  # Filter the ordered results by Log2FC threshold at 2
+  metaOutputFDR_OrderbyPval_Log2FC_2 <- metaOutputFDR_annotated %>%
+    filter(abs(Log2FC_estimate) >= 2) %>%
     arrange(pval)
   
   # Filter the ordered results by Log2FC threshold at 1
-  metaOutputFDR_OrderbyPval_Log2FC_1.0 <- metaOutputFDR_annotated %>%
+  metaOutputFDR_OrderbyPval_Log2FC_1 <- metaOutputFDR_annotated %>%
     filter(abs(Log2FC_estimate) >= 1) %>%
     arrange(pval)
   
@@ -1613,14 +1617,14 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
             paste("metaOutputFDR_OrderedByPval_", NumberOfNAs, "NA.csv",sep = ""), 
             row.names = FALSE)
   
-  # Export the ordered, annotated, filtered results at Log2FC of 0.2
-  write.csv(metaOutputFDR_OrderbyPval_Log2FC_0.2, 
-            paste("metaOutputFDR_OrderedByPval_Log2FC_0.2_", NumberOfNAs, "NA.csv",sep = ""), 
+  # Export the ordered, annotated, filtered results at Log2FC of 2
+  write.csv(metaOutputFDR_OrderbyPval_Log2FC_2, 
+            paste("metaOutputFDR_OrderedByPval_Log2FC_2_", NumberOfNAs, "NA.csv",sep = ""), 
             row.names = FALSE)
   
   # Export the ordered, annotated, filtered results at Log2FC of 1
-  write.csv(metaOutputFDR_OrderbyPval_Log2FC_1.0, 
-            paste("metaOutputFDR_OrderedByPval_Log2FC_1.0_", NumberOfNAs, "NA.csv",sep = ""), 
+  write.csv(metaOutputFDR_OrderbyPval_Log2FC_1, 
+            paste("metaOutputFDR_OrderedByPval_Log2FC_1_", NumberOfNAs, "NA.csv",sep = ""), 
             row.names = FALSE)
   
   # Export the ordered, annotated, filtered results at Log2FC of 0.5
@@ -1636,13 +1640,13 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
   print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05):")
   print(sum(metaOutputFDR_annotated$FDR < 0.05, na.rm = TRUE))
   
-  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 0.2 :")
-  print(sum(metaOutputFDR_OrderbyPval_Log2FC_0.2$FDR < 0.05, na.rm = TRUE))
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 2:")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_2$FDR < 0.05, na.rm = TRUE))
   
-  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 1 :")
-  print(sum(metaOutputFDR_OrderbyPval_Log2FC_1.0$FDR < 0.05, na.rm = TRUE))
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 1:")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_1$FDR < 0.05, na.rm = TRUE))
   
-  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 0.5 :")
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 0.5:")
   print(sum(metaOutputFDR_OrderbyPval_Log2FC_0.5$FDR < 0.05, na.rm = TRUE))
   
   # Print top results in mouse genes
@@ -1653,21 +1657,21 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
   print("Top 20 results ordered by p-values in rat genes:")
   print(head(metaOutputFDR_OrderbyPval$Rat_Symbol, 20))
   
-  # Print top results in mouse genes with |Log2FC| >= 0.2
-  print("Top 20 results ordered by p-values in mouse genes with |Log2FC| >= 0.2:")
-  print(head(metaOutputFDR_OrderbyPval_Log2FC_0.2$Mouse_Symbol, 20))
+  # Print top results in mouse genes with |Log2FC| >= 2
+  print("Top 20 results ordered by p-values in mouse genes with |Log2FC| >= 2:")
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_2$Mouse_Symbol, 20))
   
-  # Print top results in rat genes with |Log2FC| >= 0.2
-  print("Top 20 results ordered by p-values in rat genes with |Log2FC| >= 0.2:")
-  print(head(metaOutputFDR_OrderbyPval_Log2FC_0.2$Rat_Symbol, 20))
+  # Print top results in rat genes with |Log2FC| >= 2
+  print("Top 20 results ordered by p-values in rat genes with |Log2FC| >= 2:")
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_2$Rat_Symbol, 20))
   
   # Print top results in mouse genes with |Log2FC| >= 1
   print("Top 20 results ordered by p-values in mouse genes with |Log2FC| >= 1:")
-  print(head(metaOutputFDR_OrderbyPval_Log2FC_1.0$Mouse_Symbol, 20))
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_1$Mouse_Symbol, 20))
   
   # Print top results in rat genes with |Log2FC| >= 1
   print("Top 20 results ordered by p-values in rat genes with |Log2FC| >= 1:")
-  print(head(metaOutputFDR_OrderbyPval_Log2FC_1.0$Rat_Symbol, 20))
+  print(head(metaOutputFDR_OrderbyPval_Log2FC_1$Rat_Symbol, 20))
   
   # Print top results in mouse genes with |Log2FC| >= 0.5
   print("Top 20 results ordered by p-values in mouse genes with |Log2FC| >= 0.5:")
@@ -1682,8 +1686,8 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
   return(list(metaOutputFDR = metaOutputFDR,
               metaOutputFDR_annotated = metaOutputFDR_annotated,
               metaOutputFDR_OrderbyPval = metaOutputFDR_OrderbyPval,
-              metaOutputFDR_OrderbyPval_Log2FC_0.2 = metaOutputFDR_OrderbyPval_Log2FC_0.2,
-              metaOutputFDR_OrderbyPval_Log2FC_1.0 = metaOutputFDR_OrderbyPval_Log2FC_1.0,
+              metaOutputFDR_OrderbyPval_Log2FC_2 = metaOutputFDR_OrderbyPval_Log2FC_2,
+              metaOutputFDR_OrderbyPval_Log2FC_1 = metaOutputFDR_OrderbyPval_Log2FC_1,
               metaOutputFDR_OrderbyPval_Log2FC_0.5 = metaOutputFDR_OrderbyPval_Log2FC_0.5))
   
   # Remove temporary objects
@@ -1715,11 +1719,11 @@ metaOutputFDR_Annotated_0NA <- metaOutputFDR_all_0NA[[2]]
 # Meta-analysis with FDR output ordered by p-values 
 metaOutputFDR_OrderByPval_0NA <- metaOutputFDR_all_0NA[[3]]
 
-# Meta-analysis with FDR output ordered by p-values filtered by Log2FC at 0.2
-metaOutputFDR_OrderbyPval_Log2FC_0.2_0NA <- metaOutputFDR_all_0NA[[4]]
+# Meta-analysis with FDR output ordered by p-values filtered by Log2FC at 2
+metaOutputFDR_OrderbyPval_Log2FC_2_0NA <- metaOutputFDR_all_0NA[[4]]
 
 # Meta-analysis with FDR output ordered by p-values filtered by Log2FC at 1
-metaOutputFDR_OrderbyPval_Log2FC_1.0_0NA <- metaOutputFDR_all_0NA[[5]]
+metaOutputFDR_OrderbyPval_Log2FC_1_0NA <- metaOutputFDR_all_0NA[[5]]
 
 # Meta-analysis with FDR output ordered by p-values filtered by Log2FC at 0.5
 metaOutputFDR_OrderbyPval_Log2FC_0.5_0NA <- metaOutputFDR_all_0NA[[6]]
@@ -2051,3 +2055,99 @@ size.
 
 - The vertical dash line at 0 indicate no effect. Effect sizes to the left of this 
 line suggest a decrease, while those to the right suggest an increase.
+
+
+### 15) Retrieval the function of statistically significant gene  
+
+```{r func_extract_gene_function}
+# Create a function to get gene function from NCBI using Entrez Gene ID
+GetGeneFunctionByID <- function(NumberOfNAs, Log2FCThreshold, EntrezGeneList) {
+  
+  # Create an empty list to store the result 
+  gene_info_list <- list()
+  
+  # Loop through each Entrez Gene ID 
+  for(i in EntrezGeneList){
+    
+    # Print the message indicating which gene is being processed 
+    print(paste("Processing Entrez Gene ID:", i, sep = ""))
+    
+    # Retrieve the gene summary using the Entrez Gene ID
+    gene_summary <- tryCatch({
+      entrez_summary(db = "gene", id = i)
+    }, 
+    
+    # In case of error, print a warning and return NULL 
+    error = function(e){
+      warning(paste("Error in retrieving data for Entrez Gene ID:", i, sep = "", e$message))
+      return(NULL)
+    })
+    
+    # Check if the gene summary was successfully retrieved  
+    if(!is.null(gene_summary)){
+      # If the gene summaray is not NULL, extract relevant info
+      gene_info_list[[i]] <- list(
+        # ID
+        Entrez_ID = gene_summary$uid,
+        # Gene symbol
+        Gene_symbol = gene_summary$name,
+        # Full name of gene
+        Gene_description = gene_summary$description,
+        # Location on chromosome
+        Chromosome = gene_summary$chromosome,
+        # Detailed location
+        Map_location = gene_summary$maplocation,
+        # Scientific name of model
+        Model_scientific_name = gene_summary$organism$scientificname,
+        # Common name of model
+        Model_common_name = gene_summary$organism$commonname,
+        # Function of the gene
+        Gene_function = gene_summary$summary
+      )
+    } else {
+      # If the gene summary is NULL, return NA for all columns
+      gene_info_list[[i]] <- list(
+        Entrez_ID = i,
+        Gene_symbol = NA,
+        Gene_description = NA,
+        Chromosome = NA,
+        Map_location = NA,
+        Model_scientific_name = NA,
+        Model_common_name = NA,
+        Gene_function = NA
+      )
+    }
+    # Introduce a delay of 0.5 seconds between request to avoid hitting API rate limit
+    Sys.sleep(0.5)
+  }
+  
+  # Convert the final list into a dataframe
+  gene_info_df <- do.call(rbind, lapply(gene_info_list, as.data.frame))
+  rownames(gene_info_df) <- NULL
+  
+  # Export the dataframe of gene function into working directory
+  write.csv(gene_info_df, 
+            paste("Gene_function_Log2FC_", Log2FCThreshold, "_", NumberOfNAs, "NA.csv", sep = ""))
+  
+  # Return the dataframe of gene function
+  return(gene_info_df)
+}
+```
+
+
+```{r run_extract_gene_function, cache = TRUE, message = FALSE}
+# Extract gene entrez ID for genes with FDR < 0.05 & |Log2FC| > 1
+EntrezGeneList_Log2FC_1_0NA <- metaOutputFDR_OrderbyPval_Log2FC_1_0NA %>%
+  filter(FDR < 0.05) %>%
+  pull(Mouse_EntrezGene.ID)
+
+# Function use
+GeneFunction_Log2FC_1_0NA <- GetGeneFunctionByID(0,
+                                                 1,
+                                                 EntrezGeneList_Log2FC_1_0NA)
+
+# Check the structure of the output
+str(GeneFunction_Log2FC_1_0NA)
+```
+
+

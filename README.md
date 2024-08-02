@@ -2,27 +2,15 @@
 
 ## Overview
 
-This project performs a comprehensive meta-analysis of transcriptomic data from various studies related to viral encephalitis. The goal is to identify common gene expression patterns and pathways associated with viral infections that lead to encephalitis. This repository contains scripts, functions, and analysis results derived from public datasets sourced from the public database of Gemma.
+This project performs a comprehensive meta-analysis of transcriptomic data from various studies sourced from the public database of Gemma that are related to viral encephalitis. The goal is to identify common gene expression patterns and pathways associated with viral infections that lead to encephalitis. This repository contains scripts, functions, and analysis results of the project.
 
 ### Project History
 
-The Brain Data Alchemy project was initiated by **Dr. Megan Hagenauer**, who developed the core pipeline available at [Brain Data Alchemy GitHub](https://github.com/hagenaue/BrainDataAlchemy/tree/main). The pipeline was later enhanced by **Duy Nguyen**, a Biological Chemistry and Statistics major at Grinnell College, who participated as a trainee in the first and third cohorts of the project.
+The Brain Data Alchemy project was initiated by **Dr. Megan Hagenauer**, who developed the core pipeline available at [Brain Data Alchemy GitHub](https://github.com/hagenaue/BrainDataAlchemy/tree/main). The pipeline was later improved by **Duy Nguyen**, a Biological Chemistry and Statistics major at Grinnell College, who participated as a trainee in the first and third cohorts of the project.
 
 ### Data Collection
 
-The data collection for this project was performed in June 2022 and included six datasets:
-- **GSE30577** - Rabies
-- **GSE42264** - Measles
-- **GSE44331** - Vesicular Stomatitis Virus
-- **GSE51365** - Gammaherpesvirus 68
-- **GSE53784** - West Nile Virus & Japanese Encephalitis Virus
-- **GSE91074** - Venezuelan Equine Encephalitis Virus
-
-## Analysis Workflow
-
-Here’s the revised Analysis Workflow section, with steps logically grouped and without specific functions and output objects:
-
----
+The data collection for this project was performed in June 2022 and included 6 datasets.
 
 ## Analysis Workflow
 
@@ -34,12 +22,12 @@ Here’s the revised Analysis Workflow section, with steps logically grouped and
 
 - **Search for Datasets:** Locate relevant datasets in the Gemma database using search terms related to viral encephalitis and specific virus names.
   - Datasets included for meta-analysis:
-    - **GSE30577** - Rabies
-    - **GSE42264** - Measles
-    - **GSE44331** - Vesicular Stomatitis Virus
-    - **GSE51365** - Gammaherpesvirus 68
-    - **GSE53784** - West Nile Virus & Japanese Encephalitis Virus
-    - **GSE91074** - Venezuelan Equine Encephalitis Virus
+    - *GSE30577* - Rabies
+    - *GSE42264* - Measles
+    - *GSE44331* - Vesicular Stomatitis Virus
+    - *GSE51365* - Gammaherpesvirus 68
+    - *GSE53784* - West Nile Virus & Japanese Encephalitis Virus
+    - *GSE91074* - Venezuelan Equine Encephalitis Virus
 
 - **Assess Gene Expression Range:** Check for normalization issues in datasets, especially with Agilent microarray data, and address any necessary re-normalization.
 
@@ -61,7 +49,7 @@ Here’s the revised Analysis Workflow section, with steps logically grouped and
 
 - **Align DE Results from Different Models:** Combine DE results from mouse and rat models using an ortholog database to handle cross-species comparisons.
 
-### 5. Meta-Analysis and Statistical Analysis
+### 5. Meta-Analysis
 
 - **Compare Log2FC Across Datasets:** Generate correlation matrices and hierarchically clustered heatmaps to visualize consistency across datasets.
 

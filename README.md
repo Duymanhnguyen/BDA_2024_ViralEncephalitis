@@ -10,7 +10,6 @@ The Brain Data Alchemy project was initiated by **Dr. Megan Hagenauer**, who dev
 
 ### Data Collection
 
-<<<<<<< HEAD
 The data collection for this project was performed in June 2022 using gemma.R package and included 6 datasets from [Gemma database](https://gemma.msl.ubc.ca/home.html).
 
 ## Analysis Workflow

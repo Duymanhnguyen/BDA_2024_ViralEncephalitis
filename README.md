@@ -2,27 +2,15 @@
 
 ## Overview
 
-This project performs a comprehensive meta-analysis of transcriptomic data from various studies related to viral encephalitis. The goal is to identify common gene expression patterns and pathways associated with viral infections that lead to encephalitis. This repository contains scripts, functions, and analysis results derived from public datasets sourced from the public database of Gemma.
+This project performs a comprehensive meta-analysis of transcriptomic data from various studies sourced from the public database of Gemma that are related to viral encephalitis. The goal is to identify common gene expression patterns and pathways associated with viral infections that lead to encephalitis. This repository contains scripts, functions, and analysis results of the project.
 
 ### Project History
 
-The Brain Data Alchemy project was initiated by **Dr. Megan Hagenauer**, who developed the core pipeline available at [Brain Data Alchemy GitHub](https://github.com/hagenaue/BrainDataAlchemy/tree/main). The pipeline was later enhanced by **Duy Nguyen**, a Biological Chemistry and Statistics major at Grinnell College, who participated as a trainee in the first and third cohorts of the project.
+The Brain Data Alchemy project was initiated by **Dr. Megan Hagenauer**, who developed the core pipeline available at [Brain Data Alchemy GitHub](https://github.com/hagenaue/BrainDataAlchemy/tree/main). The pipeline was later improved by **Duy Nguyen**, a Biological Chemistry and Statistics major at Grinnell College, who participated as a trainee in the first and third cohorts of the project.
 
 ### Data Collection
 
-The data collection for this project was performed in June 2022 and included six datasets:
-- **GSE30577** - Rabies
-- **GSE42264** - Measles
-- **GSE44331** - Vesicular Stomatitis Virus
-- **GSE51365** - Gammaherpesvirus 68
-- **GSE53784** - West Nile Virus & Japanese Encephalitis Virus
-- **GSE91074** - Venezuelan Equine Encephalitis Virus
-
-## Analysis Workflow
-
-Here’s the revised Analysis Workflow section, with steps logically grouped and without specific functions and output objects:
-
----
+The data collection for this project was performed in June 2022 using gemma.R package and included 6 datasets from [Gemma database](https://gemma.msl.ubc.ca/home.html).
 
 ## Analysis Workflow
 
@@ -34,20 +22,26 @@ Here’s the revised Analysis Workflow section, with steps logically grouped and
 
 - **Search for Datasets:** Locate relevant datasets in the Gemma database using search terms related to viral encephalitis and specific virus names.
   - Datasets included for meta-analysis:
-    - **GSE30577** - Rabies
-    - **GSE42264** - Measles
-    - **GSE44331** - Vesicular Stomatitis Virus
-    - **GSE51365** - Gammaherpesvirus 68
-    - **GSE53784** - West Nile Virus & Japanese Encephalitis Virus
-    - **GSE91074** - Venezuelan Equine Encephalitis Virus
+    - *GSE30577* - Rabies (Mus musculus model)
+    - *GSE42264* - Measles (Mus musculus model)
+    - *GSE44331* - Vesicular Stomatitis Virus (Mus musculus model)
+    - *GSE51365* - Gammaherpesvirus 68 (Mus musculus model)
+    - *GSE53784* - West Nile Virus & Japanese Encephalitis Virus (Mus musculus model)
+    - *GSE91074* - Venezuelan Equine Encephalitis Virus(Mus musculus model)
 
 - **Assess Gene Expression Range:** Check for normalization issues in datasets, especially with Agilent microarray data, and address any necessary re-normalization.
+  - *GSE30577* - Agilent Microarray
+  - *GSE42264* - Affymetrix Array
+  - *GSE44331* - Affymetrix Array
+  - *GSE51365* - Affymetrix Array
+  - *GSE53784* - Affymetrix Array
+  - *GSE91074* - Affymetrix Array
 
 ### 3. Differential Expression Analysis
 
-- **Extract Statistical Contrasts:** Retrieve and review statistical contrasts of differential expression analysis to ensure proper subset selection and reference group configuration. Adjust if necessary.
+- **Extract Statistical Contrasts:** Retrieve and review statistical contrasts of differential expression analysis to ensure proper subset selection and reference group. Manually select contrasts of interest.
 
-- **Download Differential Expression (DE) Results:** Retrieve and save DE results, focusing on contrasts of interest.
+- **Download Differential Expression (DE) Results:** Retrieve and save DE results of contrasts of interest.
 
 - **Filter DE Results:** Filter results to retain only those with good gene annotation.
 
@@ -57,11 +51,11 @@ Here’s the revised Analysis Workflow section, with steps logically grouped and
 
 - **Collapse DE Results:** Aggregate DE results to one result per gene, calculating standard error and sampling variance.
 
-- **Align DE Results from Same Models:** Integrate DE results from different datasets involving mouse models into a unified dataframe.
+- **Align DE Results from Same Models:** Integrate DE results from different datasets involving mouse models or rat models, if applicable, into a unified dataframe.
 
-- **Align DE Results from Different Models:** Combine DE results from mouse and rat models using an ortholog database to handle cross-species comparisons.
+- **Align DE Results from Different Models:** Combine DE results from mouse and rat models using an ortholog database to handle cross-species comparisons, if applicable.
 
-### 5. Meta-Analysis and Statistical Analysis
+### 5. Meta-Analysis
 
 - **Compare Log2FC Across Datasets:** Generate correlation matrices and hierarchically clustered heatmaps to visualize consistency across datasets.
 

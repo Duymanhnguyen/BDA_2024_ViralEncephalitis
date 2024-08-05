@@ -2,7 +2,7 @@
 title: "BDA_2024_MetaAnalysis_ViralEncephalitis"
 author: "Duy Nguyen"
 date: "2024-07-22"
-output: 
+output:  
   pdf_document:
     latex_engine: xelatex
 ---
@@ -11,7 +11,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Research Flow of Meta-Analysis of Transcriptomics Profile in Viral Encephalitis
+## Research Guide of Meta-Analysis of Transcriptomics Profile in Viral Encephalitis
 
 **Step 1:** Project set up with necessary packages
 
@@ -29,6 +29,10 @@ GSE53784, GSE91074
 Some datasets, especially Agilent microarray datasets, were normalized incorrectly,
 which may require re-normalization.
 
+*Function:* 
+
+- `CheckGeneExpressionRange()`: Function to check expression range of the dataset
+
 **Step 4:** Extract statistical contrasts of differential analysis in the datasets
 
 These statistical contrasts allow us to check if the differential analyses are:
@@ -41,11 +45,68 @@ These statistical contrasts allow us to check if the differential analyses are:
 
 Based on the statistical contrasts, we might need to re-run the differential analysis
 
+*Function:*
+
+- `GettingResultSetInfoForDatasets()`: Function to extract statistical contrasts of 
+differential analysis in each dataset
+
+*Output object:* 
+
+- ResultSets_toScreen
+
+- ExperimentIDs
+
 **Step 5:** Download the differential expression (DE) results from each dataset 
+
+*Functions:*
+
+- `DownloadingDEResults()`: Function to download DE results and extract Log2FC and 
+T-stat for contrasts of interest
+
+- `SavingGemmaDEResults_forEachResultSet()`: Function to save DE results for each
+ResultSet into the working directory
+
+*Output objects:* 
+
+- ResultSets_contrasts (Rename of ResultSets_Screened)
+
+- UniqueResultSetIDs
+
+- differentials 
+
+- DEResults_GSE#####_######
 
 **Step 6:** Filter DE results for rows with good gene annotation
 
+*Function:*
+
+- `FilteringDEResults_GoodAnnotation()`: Function to filter rows with good gene 
+annotation
+
+*Output objects:*
+
+- DEResults_GSE##### (Separated from "differentials")
+
+- DE_Results_GSE#####_GoodAnnotation 
+
 **Step 7:** Extract DE results for the contrasts of interest
+
+*Functions:*
+
+- `GetContrastIDsforResultSet()`: Function to extract the contrast ID using FC column 
+names (Used within function `ExtractingDEResultsForContrasts()`)
+
+- `ExtractingDEResultsForContrasts()`: Function to extract DE results for contrasts
+of interest
+
+- `GetContrastStatColumns()`: Function to extract the Log2FC and T-stat of contrasts
+of interest
+
+*Output objects:*
+
+- Contrast_Log2FC_GSE###### | Contrast_Tstat_GSE##### | ComparisonOfInterest_GSE#####
+
+- DE_Results_Contrasts_GSE#####
 
 **Step 8:** Collapse DE results to one result per gene & Calculate standard error
 and sampling variance
@@ -57,28 +118,162 @@ Standard error of Log2FC = Log2FC/T-statistics
 
 Sampling variance = Average of standard error of each gene^2
 
+*Function:*
+
+- `CollapsingDEResults_OneResultPerGene()`: Function to average Log2FC, Tstat, standard
+error (SE) and calculate sampling variance (SV) to one unique gene per dataset 
+
+*Output objects:*
+
+- NameOfFoldChangeColumns_GSE##### | NameOfTstatColumns_GSE#####
+
+- Collapsing_DEResults_GSE##### folder with 4 different objects:
+
+DEResults_GSE#####_GoodAnnotation_FoldChange_AveragedByGene
+
+DE_Results_GSE#####_GoodAnnotation_Tstat_AveragedByGene
+
+DE_Results_GSE#####_GoodAnnotation_SE_AveragedByGene
+
+DE_Results_GSE#####_GoodAnnotation_SV
+
+
 **Step 9:** Align DE results from same models (either from mouse model or rat model)
 
 As DE results from different datasets are in slightly different orders due to 
 various experimental factors, we want to align these results so that the DE results 
 from each dataset are columns, with each row representing a different gene.
 
+*Function:*
+
+- `AligningMouseDatasets()`: Function to align all mouse DE results from different
+datasets into a single dataframe for Log2FC and SV
+
+*Output objects:*
+
+- Mouse_MetaAnalysis_FoldChanges
+
+- Mouse_MetaAnalysis_SV
+
 **Step 10:** Align DE results from different models (combine DE results from both 
-mouse model and rat model using the ortholog database from Jackson Lab)
+mouse model and rat model using the ortholog database from Jackson Lab) 
+
+###### Problem with extra NA when joining the original dataframe with the ortholog database
+
+*Output Objects:*
+
+- MouseVsRat_NCBI_Entrez
+
+- Mouse_MetaAnalysis_FoldChanges_wOrthologs
+
+- Mouse_MetaAnalysis_SV_wOrthologs
+
+- MetaAnalysis_FoldChanges
+
+- MetaAnalysis_SV
 
 **Step 11:** Compare Log2FC across datasets with correlation matrix and hierarchically 
 clustered heatmap
+
+*Output Objects:*
+
+- MetaAnalysis_CorMatrix_FoldChanges
+
+- Hierarchically clustered heatmaps 
 
 **Step 12:** Meta-analysis with random effect models
 
 Meta-analysis is performed using effect sizes (Log2FC) and sampling variances (SV)
 
+*Function:*
+
+- `RunBasicMetaAnalysis()`: Function to perform meta-analysis
+
+*Output Objects:*
+
+- MetaAnalysis_FoldChanges_NAsPerRow
+
+- CutOffForNAs
+
+- NumberOfComparisons
+
+- MetaAnalysis_Results_0NA
+
+- metaOutput_0NA | MetaAnalysis_Annotation_0NA | MetaAnalysis_FoldChanges_ForMeta_0NA |
+MetaAnalysis_SV_ForMeta_0NA (Separated from MetaAnalysis_Results_0NA)
+
 **Step 13:** Correct p-value for each gene using Benjamini-Hochberg method for 
 False Discovery Rate (FDR or q-value)
 
+*Function:*
+
+- `FalseDiscoveryCorrection()`: Function to correct FDR and extract gene with certain
+threshold of FDR and Log2FC
+
+*Output Objects:*
+
+- HOM_MouseVsRat
+
+- metaOutputFDR_all_0NA
+
+- metaOutputFDR_0NA | metaOutputFDR_Annotated_0NA | metaOutputFDR_OrderByPval_0NA |
+metaOutputFDR_OrderbyPval_Log2FC_2_0NA | metaOutputFDR_OrderbyPval_Log2FC_1_0NA |
+metaOutputFDR_OrderbyPval_Log2FC_0.5_0NA (Separated from metaOutputFDR_all_0NA)
+
 **Step 14:** Create forest plots for statistically significant genes 
 
-**Step 15:** Retrieve gene function from NCBI using Entrez ID 
+*Function:*
+
+- `MakeForestPlots()`: Function to generate forest plots
+
+*Output Objects:*
+
+- Forest plots of statistically significant genes
+
+**Step 15:** Retrieve gene function from NCBI using Entrez ID
+
+*Function:*
+
+- `GetGeneFunctionByID()`: Function to get gene function from NCBI using Entrez 
+Gene ID 
+
+*Output Objects:*
+
+- EntrezGeneList_Log2FC_1_0NA
+
+- GeneFunction_Log2FC_1_0NA
+
+**Step 16:** Gene Set Enrichment Analysis with KEGG/GO/Reactome databases
+
+*Function:*
+
+- `GSEAPerform_KEGG_GO_Reactome()`: Function to perform GSEA on common databases, 
+including KEGG, GO, and Reactome
+
+*Output Object:*
+
+- GSEA_Log2FC_1_0NA
+
+- GSEA_Log2FC_1_0NA_KEGG
+
+- GSEA_Log2FC_1_0NA_GO
+
+- GSEA_Log2FC_1_0NA_Reactome
+
+**Step 17:** Gene Set Enrichment Analysis with Brain.GMT database (developed by
+Dr. Hagenauer)
+
+*Output Object:*
+
+- BrainGMT_metaOutputFDR_1_0NA
+
+- BrainGMT_metaOutputFDR_1_0NA_cleaned
+
+- BrainGMT_metaOutputFDR_OrderedByLog2FC_1_0NA
+
+- BrainGMT_Mouse
+
+- GSEA_Log2FC_1_0NA_BrainGMT
 
 
 ### 1) Project Set Up
@@ -108,6 +303,14 @@ devtools:: install_github("PavlidisLab/gemma.R", force = T)
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 BiocManager::install("multtest")                                 
+BiocManager::install("clusterProfiler")
+# Mus musculus (Mouse gene annotation database
+# Other databases include:
+# 1. Rattus norvegicus (Rat) - org.Rn.eg.db
+# 2. Homo sapiens (Human) - org.Hs.eg.db
+BiocManager::install("org.Mm.eg.db")  
+BiocManager::install("ReactomePA")  
+BiocManager::install("fgsea")
 
 install.packages("plyr")
 install.packages("metafor")
@@ -132,6 +335,10 @@ library("RColorBrewer")
 library("viridis")
 library("multtest")
 library("rentrez")
+library("clusterProfiler")
+library("org.Mm.eg.db")
+library("ReactomePA")
+library("fgsea")
 
 # Check loaded packages 
 (.packages())
@@ -852,6 +1059,8 @@ Sampling variance = Average of standard error of each gene^2
 
 
 ```{r func_collapse_contrast_DEResults}
+# Create a function to average Log2FC, Tstat, standard error to one unique gene 
+# per dataset 
 CollapsingDEResults_OneResultPerGene<-function(GSE_ID, 
                                                DE_Results_GoodAnnotation, 
                                                ComparisonsOfInterest, 
@@ -1177,13 +1386,11 @@ are descended from a feature present in a common ancestor.
 
 - *Homologous gene* become separated in evolution in 2 different ways:
 
-1. Separation of 2 populations with the ancestral gene into 2 species 
+1. Separation of 2 populations with the ancestral gene into 2 species. Gene separated 
+by *speciation* are called *orthologs*.
 
-Gene separated by *speciation* are called *orthologs*.
-
-2. Duplication of the ancestral gene within a lineage
-
-Gene separated by *gene duplication* are called *paralogs*.
+2. Duplication of the ancestral gene within a lineage. Gene separated by *gene duplication* 
+are called *paralogs*.
 
 Ref: https://www.nlm.nih.gov/ncbi/workshops/2023-08_BLAST_evol/ortho_para.html
 
@@ -1305,6 +1512,7 @@ correlation and +1 being a perfect positive correlation
 # Illustrate the correlation matrix with hierarchically clustered heatmap
 
 # Blues Palette
+# png("MetaAnalysis_CorMatrix_FoldChanges_1.png", 8, 5, "in", res = 300)
 pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          display_numbers = TRUE,
          fontsize = 10,
@@ -1312,8 +1520,10 @@ pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          color = colorRampPalette(brewer.pal(5, "Blues"))(100),
          border_color = "black",
          number_color = "black")
+# dev.off()
 
 # Oranges Palette
+# png("MetaAnalysis_CorMatrix_FoldChanges_2.png", 8, 5, "in", res = 300)
 pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          display_numbers = TRUE,
          fontsize = 10,
@@ -1321,8 +1531,10 @@ pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          color = colorRampPalette(brewer.pal(5, "Oranges"))(100),
          border_color = "black",
          number_color = "black")
+# dev.off()
 
 # Blues-Yellows Palette
+# png("MetaAnalysis_CorMatrix_FoldChanges_3.png", 8, 5, "in", res = 300)
 pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          display_numbers = TRUE,
          fontsize = 10,
@@ -1330,8 +1542,10 @@ pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          color = hcl.colors(5, "BluYl"),
          border_color = "black",
          number_color = "black")
+# dev.off()
 
 # Viridis Palette
+# png("MetaAnalysis_CorMatrix_FoldChanges_4.png", 8, 5, "in", res = 300)
 pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          display_numbers = TRUE,
          fontsize = 10,
@@ -1339,6 +1553,7 @@ pheatmap(MetaAnalysis_CorMatrix_FoldChanges,
          color = viridis(5),
          border_color = "black",
          number_color = "black")
+# dev.off()
 
 # The groups are placed in order by similarity, as determined by hierarchical clustering
 # The lines ("tree branches") on the left and top illustrate that similarity (clustering) 
@@ -1543,7 +1758,8 @@ HOM_MouseVsRat$Rat_EntrezGene.ID <- as.character(HOM_MouseVsRat$Rat_EntrezGene.I
 
 
 ```{r func_FDR}
-# Create a function to correct FDR and extract genes with FDR > 0.05 and 0.1
+# Create a function to correct FDR and extract genes with certain threshold of FDR
+# and Log2FC
 FalseDiscoveryCorrection <- function(NumberOfNAs,
                                      metaOutput,
                                      HOM_MouseVsRat,
@@ -2148,6 +2364,202 @@ GeneFunction_Log2FC_1_0NA <- GetGeneFunctionByID(0,
 
 # Check the structure of the output
 str(GeneFunction_Log2FC_1_0NA)
+```
+
+
+### 16) Gene Set Enrichment Analysis (GSEA) with KEGG/GO/Reactome databases
+
+```{r func_GSEA_KEGG_GO_Reactome}
+# Create a function to perform GSEA on common databases, including KEGG, GO, and 
+# Reactome
+GSEAPerform_KEGG_GO_Reactome <- function(EntrezGeneList,
+                                         pvalueCutOff,
+                                         qvalueCutOff){
+  # Load the mouse gene annotation database 
+  OrgDb <- org.Mm.eg.db
+  
+  # Perform GSEA with KEGG database 
+  KEGG_GSEA_result <- enrichKEGG(gene = EntrezGeneList,
+                                 # Organism code for Mus musculus
+                                 organism = "mmu",
+                                 # p-value cut off
+                                 pvalueCutoff = pvalueCutOff,
+                                 # FDR cut off
+                                 qvalueCutoff = qvalueCutOff)
+  
+  # Perform GSEA with GO database 
+  GO_GSEA_result <- enrichGO(gene = EntrezGeneList,
+                             # Select database for Mus musculus
+                             OrgDb = OrgDb,
+                             # Ontology for biological process
+                             # Other ontologies include "MF" for Molecular Function
+                             # and "CC" for Cellular Component 
+                             ont = "BP", 
+                             # p-value cut off
+                             pvalueCutoff = pvalueCutOff,
+                             # FDR cut off
+                             qvalueCutoff = qvalueCutOff)
+  
+  # Perform GSEA with Reactome database 
+  Reactome_GSEA_result <- enrichPathway(gene = EntrezGeneList,
+                                        # Organism code for Mus musculus
+                                        organism = "mouse",
+                                        # p-value cut off
+                                        pvalueCutoff = pvalueCutOff,
+                                        # FDR cut off
+                                        qvalueCutoff = qvalueCutOff)
+  
+  # Return the list of results
+  return(list(KEGG = KEGG_GSEA_result, 
+              GO = GO_GSEA_result,
+              Reactome = Reactome_GSEA_result))
+}
+```
+
+
+```{r run_GSEA_KEGG_GO_Reactome, cache = TRUE}
+# Function use
+GSEA_Log2FC_1_0NA <- GSEAPerform_KEGG_GO_Reactome(EntrezGeneList_Log2FC_1_0NA,
+                                                  0.5,
+                                                  0.5)
+
+
+# Visualize the GSEA results
+# png("GSEA_Log2FC_1_0NA_KEGG.png", 8, 5, "in", res = 300)
+dotplot(GSEA_Log2FC_1_0NA$KEGG, showCategory = 10, font.size = 7)
+# dev.off()
+
+# png("GSEA_Log2FC_1_0NA_GO.png", 8, 5, "in", res = 300)
+barplot(GSEA_Log2FC_1_0NA$GO, showCategory = 10, font.size = 7)
+# dev.off()
+
+# png("GSEA_Log2FC_1_0NA_Reactome.png", 8, 5, "in", res = 300)
+barplot(GSEA_Log2FC_1_0NA$Reactome, showCategory = 10, font.size = 7)
+# dev.off()
+
+# Transform the matched pathways results into dataframes and export into the working
+# directory
+GSEA_Log2FC_1_0NA_KEGG <- as.data.frame(GSEA_Log2FC_1_0NA$KEGG)
+row.names(GSEA_Log2FC_1_0NA_KEGG) <- NULL
+write.csv(GSEA_Log2FC_1_0NA_KEGG, "GSEA_Log2FC_1_0NA_KEGG.csv")
+
+GSEA_Log2FC_1_0NA_GO <- as.data.frame(GSEA_Log2FC_1_0NA$GO)
+row.names(GSEA_Log2FC_1_0NA_GO) <- NULL
+write.csv(GSEA_Log2FC_1_0NA_GO, "GSEA_Log2FC_1_0NA_GO.csv")
+
+GSEA_Log2FC_1_0NA_Reactome <- as.data.frame(GSEA_Log2FC_1_0NA$Reactome)
+row.names(GSEA_Log2FC_1_0NA_Reactome) <- NULL
+write.csv(GSEA_Log2FC_1_0NA_Reactome, "GSEA_Log2FC_1_0NA_Reactome.csv")
+```
+
+
+### 17) Gene Set Enrichment Analysis (GSEA) with Brain.GMT database
+
+The Brain.GMT database, developed by Hagenauer et al. (2024), is designed to improve 
+the interpretation of brain-derived differential expression results, especially 
+in studies focused on neuropsychiatric disorders. The Brain.GMT can be used within 
+common pipelines (GSEA, limma, edgeR) to interpret results from 3 species of rat, 
+mouse, human. The database includes 918 gene sets derived from various sources, 
+each curated to be relevant to brain functions, brain celltypes, co-expression networks, 
+and regional gene expression signatures.
+
+Gene sets included in the Brain.GMT:
+
+**1. MSigDB Gene SetS**
+
+- Curated Gene Sets: 158 gene sets related to the nervous system.
+
+- Cell Type Signature Gene Sets: 211 gene sets related to the nervous system and blood.
+
+**2. BrainInABlender**
+
+- 39 gene sets related to cell type-enriched expression, particularly in the cortex.
+
+**3. DropViz**
+
+- 13 gene sets focused on hippocampal expression, and 12 gene sets for the nucleus accumbens.
+
+**4. HippoSeq**
+
+- 14 gene sets related to regional enriched expression in the hippocampus.
+
+**5. Coexpression Analyses**
+
+- 55 gene sets derived from coexpression networks in the hippocampus.
+
+**6. Gene Weaver**
+
+- 33 gene sets for the hippocampus and 6 gene sets for the nucleus accumbens related 
+to stress, environmental enrichment, affective behavior, and mood disorder.
+
+**7. Gemma**
+
+- 29 gene sets derived from reanalysis pipelines focusing on stress, environmental 
+enrichment, affective behavior, and mood disorder in the nucleus accumbens.
+
+Ref for Brain.GMT: https://doi.org/10.1016/j.mex.2024.102788
+
+Ref for orginal GSEA: https://doi.org/10.1073/pnas.0506580102
+
+Although the Brain.GMT focuses on brain-related genes, the impact of viral infection
+might involve specific pathways or immune responses that are not well-represented
+in this database.
+
+```{r run_GSEA_BrainGMT, cache = TRUE}
+# Create a named vector from meta-analysis output
+# Names = Mouse gene symbol | Values = Log2FC estimate
+BrainGMT_metaOutputFDR_1_0NA <- setNames(
+  metaOutputFDR_OrderbyPval_Log2FC_1_0NA$Log2FC_estimate,
+  metaOutputFDR_OrderbyPval_Log2FC_1_0NA$Mouse_Symbol
+)
+
+# Remove genes with NA or duplicated names
+BrainGMT_metaOutputFDR_1_0NA_cleaned <- BrainGMT_metaOutputFDR_1_0NA %>%
+  # Convert to dataframe for easier manipulation
+  enframe(name = "gene_name", value = "Log2FC_estimate") %>%
+  # Remove rows with NA names
+  filter(!is.na(gene_name)) %>%
+  # Remove duplicated names, keeping the first instance
+  distinct(gene_name, .keep_all = TRUE) %>%
+  # Convert back to named vector
+  deframe()
+
+# Order the vector by Log2FC in ascending order
+BrainGMT_metaOutputFDR_OrderedByLog2FC_1_0NA <- BrainGMT_metaOutputFDR_1_0NA_cleaned[order(BrainGMT_metaOutputFDR_1_0NA_cleaned)]
+
+# Import the Brain.GMT for the specific species of interest
+# Ignore the warning about incomplete line 
+BrainGMT_Mouse <- gmtPathways("BrainGMTv2_MouseOrthologs.gmt.txt")
+
+# Perform fast fGSEA with Brain.GMT
+GSEA_Log2FC_1_0NA_BrainGMT <- fgseaSimple(BrainGMT_Mouse, 
+                                          BrainGMT_metaOutputFDR_OrderedByLog2FC_1_0NA,
+                                          # Number of permutations for the GSEA
+                                          nperm = 10000,
+                                          # Minimum size of gene sets to consider
+                                          minSize = 10,
+                                          # Maximum size of gene sets to consider 
+                                          maxSize = 1000)
+# Converts the list of leading edge genes (genes contributing to enrichment) in 
+# the GSEA results to a comma-separated string
+GSEA_Log2FC_1_0NA_BrainGMT$leadingEdge <- vapply(GSEA_Log2FC_1_0NA_BrainGMT$leadingEdge, 
+                                                 paste, 
+                                                 collapse= ",", 
+                                                 character(1L))
+
+# Export the matched pathways into the working directory
+write.csv(GSEA_Log2FC_1_0NA_BrainGMT, "GSEA_Log2FC_1_0NA_BrainGMT.csv")
+
+# It is not sorted by p-value?
+# padj: FDR corrected p-value (using familywise-error rate???)
+# ES & NES: Enrichment Score and Normalized Enrichment Score for each gene set
+# Positive ES & NES means that the gene set is enriched with upregulation in response
+# to your variable of interest
+# Negative ES & NES means that the gene set is enriched with downregulation in response
+# to your variable of interest
+# leadingEdge: The core of a gene set that accounts for the enrichment signal
+# nMoreExtreme???
+# Size???
 ```
 
 

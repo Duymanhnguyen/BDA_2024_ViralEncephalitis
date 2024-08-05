@@ -265,15 +265,15 @@ Dr. Hagenauer)
 
 *Output Object:*
 
-- BrainGMT_metaOutputFDR_1_0NA
+- BrainGMT_metaOutputFDR_#_0NA
 
-- BrainGMT_metaOutputFDR_1_0NA_cleaned
+- BrainGMT_metaOutputFDR_#_0NA_cleaned
 
 - BrainGMT_metaOutputFDR_OrderedByLog2FC_1_0NA
 
 - BrainGMT_Mouse
 
-- GSEA_Log2FC_1_0NA_BrainGMT
+- GSEA_Log2FC_#_0NA_BrainGMT
 
 
 ### 1) Project Set Up

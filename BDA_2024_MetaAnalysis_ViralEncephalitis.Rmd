@@ -2357,10 +2357,19 @@ EntrezGeneList_Log2FC_1_0NA <- metaOutputFDR_OrderbyPval_Log2FC_1_0NA %>%
   filter(FDR < 0.05) %>%
   pull(Mouse_EntrezGene.ID)
 
+# Extract gene entrez ID for genes with FDR < 0.05 & |Log2FC| > 2
+EntrezGeneList_Log2FC_2_0NA <- metaOutputFDR_OrderbyPval_Log2FC_2_0NA %>%
+  filter(FDR < 0.05) %>%
+  pull(Mouse_EntrezGene.ID)
+
 # Function use
 GeneFunction_Log2FC_1_0NA <- GetGeneFunctionByID(0,
                                                  1,
                                                  EntrezGeneList_Log2FC_1_0NA)
+
+GeneFunction_Log2FC_2_0NA <- GetGeneFunctionByID(0,
+                                                 2,
+                                                 EntrezGeneList_Log2FC_2_0NA)
 
 # Check the structure of the output
 str(GeneFunction_Log2FC_1_0NA)
@@ -2423,18 +2432,33 @@ GSEA_Log2FC_1_0NA <- GSEAPerform_KEGG_GO_Reactome(EntrezGeneList_Log2FC_1_0NA,
                                                   0.5,
                                                   0.5)
 
+GSEA_Log2FC_2_0NA <- GSEAPerform_KEGG_GO_Reactome(EntrezGeneList_Log2FC_2_0NA,
+                                                  0.5,
+                                                  0.5)
 
 # Visualize the GSEA results
 # png("GSEA_Log2FC_1_0NA_KEGG.png", 8, 5, "in", res = 300)
 dotplot(GSEA_Log2FC_1_0NA$KEGG, showCategory = 10, font.size = 7)
 # dev.off()
 
+# png("GSEA_Log2FC_2_0NA_KEGG.png", 8, 5, "in", res = 300)
+dotplot(GSEA_Log2FC_2_0NA$KEGG, showCategory = 10, font.size = 7)
+# dev.off()
+
 # png("GSEA_Log2FC_1_0NA_GO.png", 8, 5, "in", res = 300)
 barplot(GSEA_Log2FC_1_0NA$GO, showCategory = 10, font.size = 7)
 # dev.off()
 
+# png("GSEA_Log2FC_2_0NA_GO.png", 8, 5, "in", res = 300)
+barplot(GSEA_Log2FC_2_0NA$GO, showCategory = 10, font.size = 7)
+# dev.off()
+
 # png("GSEA_Log2FC_1_0NA_Reactome.png", 8, 5, "in", res = 300)
 barplot(GSEA_Log2FC_1_0NA$Reactome, showCategory = 10, font.size = 7)
+# dev.off()
+
+# png("GSEA_Log2FC_2_0NA_Reactome.png", 8, 5, "in", res = 300)
+barplot(GSEA_Log2FC_2_0NA$Reactome, showCategory = 10, font.size = 7)
 # dev.off()
 
 # Transform the matched pathways results into dataframes and export into the working
@@ -2443,13 +2467,25 @@ GSEA_Log2FC_1_0NA_KEGG <- as.data.frame(GSEA_Log2FC_1_0NA$KEGG)
 row.names(GSEA_Log2FC_1_0NA_KEGG) <- NULL
 write.csv(GSEA_Log2FC_1_0NA_KEGG, "GSEA_Log2FC_1_0NA_KEGG.csv")
 
+GSEA_Log2FC_2_0NA_KEGG <- as.data.frame(GSEA_Log2FC_2_0NA$KEGG)
+row.names(GSEA_Log2FC_2_0NA_KEGG) <- NULL
+write.csv(GSEA_Log2FC_2_0NA_KEGG, "GSEA_Log2FC_2_0NA_KEGG.csv")
+
 GSEA_Log2FC_1_0NA_GO <- as.data.frame(GSEA_Log2FC_1_0NA$GO)
 row.names(GSEA_Log2FC_1_0NA_GO) <- NULL
 write.csv(GSEA_Log2FC_1_0NA_GO, "GSEA_Log2FC_1_0NA_GO.csv")
 
+GSEA_Log2FC_2_0NA_GO <- as.data.frame(GSEA_Log2FC_2_0NA$GO)
+row.names(GSEA_Log2FC_2_0NA_GO) <- NULL
+write.csv(GSEA_Log2FC_2_0NA_GO, "GSEA_Log2FC_2_0NA_GO.csv")
+
 GSEA_Log2FC_1_0NA_Reactome <- as.data.frame(GSEA_Log2FC_1_0NA$Reactome)
 row.names(GSEA_Log2FC_1_0NA_Reactome) <- NULL
 write.csv(GSEA_Log2FC_1_0NA_Reactome, "GSEA_Log2FC_1_0NA_Reactome.csv")
+
+GSEA_Log2FC_2_0NA_Reactome <- as.data.frame(GSEA_Log2FC_2_0NA$Reactome)
+row.names(GSEA_Log2FC_2_0NA_Reactome) <- NULL
+write.csv(GSEA_Log2FC_2_0NA_Reactome, "GSEA_Log2FC_2_0NA_Reactome.csv")
 ```
 
 
@@ -2505,12 +2541,17 @@ Although the Brain.GMT focuses on brain-related genes, the impact of viral infec
 might involve specific pathways or immune responses that are not well-represented
 in this database.
 
-```{r run_GSEA_BrainGMT, cache = TRUE}
+```{r run_GSEA_BrainGMT_1, cache = TRUE}
 # Create a named vector from meta-analysis output
 # Names = Mouse gene symbol | Values = Log2FC estimate
+# FDR < 0.05 | |Log2FC| > 1
+
+BrainGMT_metaOutputFDR_1_0NA_FDR_0.05 <- metaOutputFDR_OrderbyPval_Log2FC_1_0NA %>%
+  filter(FDR < 0.05)
+
 BrainGMT_metaOutputFDR_1_0NA <- setNames(
-  metaOutputFDR_OrderbyPval_Log2FC_1_0NA$Log2FC_estimate,
-  metaOutputFDR_OrderbyPval_Log2FC_1_0NA$Mouse_Symbol
+  BrainGMT_metaOutputFDR_1_0NA_FDR_0.05$Log2FC_estimate,
+  BrainGMT_metaOutputFDR_1_0NA_FDR_0.05$Mouse_Symbol
 )
 
 # Remove genes with NA or duplicated names
@@ -2563,3 +2604,49 @@ write.csv(GSEA_Log2FC_1_0NA_BrainGMT, "GSEA_Log2FC_1_0NA_BrainGMT.csv")
 ```
 
 
+```{r run_GSEA_BrainGMT_2, cache = TRUE}
+# Create a named vector from meta-analysis output
+# Names = Mouse gene symbol | Values = Log2FC estimate
+# FDR < 0.05 | |Log2FC| > 2
+
+BrainGMT_metaOutputFDR_2_0NA_FDR_0.05 <- metaOutputFDR_OrderbyPval_Log2FC_2_0NA %>%
+  filter(FDR < 0.05)
+
+BrainGMT_metaOutputFDR_2_0NA <- setNames(
+  BrainGMT_metaOutputFDR_2_0NA_FDR_0.05$Log2FC_estimate,
+  BrainGMT_metaOutputFDR_2_0NA_FDR_0.05$Mouse_Symbol
+)
+
+# Remove genes with NA or duplicated names
+BrainGMT_metaOutputFDR_2_0NA_cleaned <- BrainGMT_metaOutputFDR_2_0NA %>%
+  # Convert to dataframe for easier manipulation
+  enframe(name = "gene_name", value = "Log2FC_estimate") %>%
+  # Remove rows with NA names
+  filter(!is.na(gene_name)) %>%
+  # Remove duplicated names, keeping the first instance
+  distinct(gene_name, .keep_all = TRUE) %>%
+  # Convert back to named vector
+  deframe()
+
+# Order the vector by Log2FC in ascending order
+BrainGMT_metaOutputFDR_OrderedByLog2FC_2_0NA <- BrainGMT_metaOutputFDR_2_0NA_cleaned[order(BrainGMT_metaOutputFDR_2_0NA_cleaned)]
+
+# Perform fast fGSEA with Brain.GMT
+GSEA_Log2FC_2_0NA_BrainGMT <- fgseaSimple(BrainGMT_Mouse, 
+                                          BrainGMT_metaOutputFDR_OrderedByLog2FC_2_0NA,
+                                          # Number of permutations for the GSEA
+                                          nperm = 10000,
+                                          # Minimum size of gene sets to consider
+                                          minSize = 10,
+                                          # Maximum size of gene sets to consider 
+                                          maxSize = 1000)
+# Converts the list of leading edge genes (genes contributing to enrichment) in 
+# the GSEA results to a comma-separated string
+GSEA_Log2FC_2_0NA_BrainGMT$leadingEdge <- vapply(GSEA_Log2FC_2_0NA_BrainGMT$leadingEdge, 
+                                                 paste, 
+                                                 collapse= ",", 
+                                                 character(1L))
+
+# Export the matched pathways into the working directory
+write.csv(GSEA_Log2FC_2_0NA_BrainGMT, "GSEA_Log2FC_2_0NA_BrainGMT.csv")
+```

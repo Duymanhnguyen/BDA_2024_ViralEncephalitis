@@ -248,7 +248,7 @@ Gene ID
 
 - GeneFunction_Log2FC_1_0NA
 
-**Step 16:** Gene Set Enrichment Analysis with KEGG/GO/Reactome databases
+**Step 16:** Enrichment Analysis with KEGG/GO/Reactome databases
 
 *Function:*
 
@@ -2394,29 +2394,74 @@ str(GeneFunction_Log2FC_1_0NA)
 ```
 
 
-### 16) Gene Set Enrichment Analysis (GSEA) with KEGG/GO/Reactome databases [Need to fix]
+### 16) Enrichment analysis (EA) with KEGG/GO/Reactome databases
 
-The difference between GSEA and fGSEA:
+The difference between Enrichment Analysis, GSEA, and fGSEA:
 
-**1. Gene Set Enrichment Analysis (GSEA)**
+**1. Enrichment Analysis (EA)**
 
-- *Definition:* GSEA is a computational method used to determine whether a predefined
-set of genes shows statistically significant differences between two biological states
-or conditions.
+- *Definition:* Enrichment analysis refers to a collection of methods used to determine 
+whether predefined gene sets (such as biological pathways or functional categories) 
+are overrepresented in a list of genes of interest, often derived from differential 
+expression studies.
 
-- *Goal:* The goal of GSEA is to identify whether specific gene sets are overrrepresented/
-enriched in a ranked list of genes, which is often derived from differential expression
-analysis.
+- *Goal:* The goal is to identify if specific gene sets are significantly enriched 
+in the gene list compared to a background set of genes. This can highlight biological 
+processes or pathways that are impacted in the condition of interest.
 
-- *Method:* GSEA computes enrichment scores by comparing the observed gene set against 
-the background, using permutation-based statistical methods to evaluate significance.
-When the entire gene sets are evaluated, the estimated significance is adjusted to
-account for multiple hypothesis testing.
+- *Method:* Enrichment analysis typically involves comparing the gene list to a 
+background gene set using various statistical tests. The most common methods include 
+Fisher's exact test, hypergeometric test,... The analysis can be performed on a 
+gene set level without requiring a pre-ranked list.
 
-- *Sensitivity:* The results can be sensitive to the choice of the background gene 
-set. An incorrect or incomplete background may lead to misleading conclusions.
+- *Flexibility:* This approach can be used with different types of gene set databases 
+(e.g., KEGG, GO, Reactome). The choice of the background gene set can affect the 
+results, and the method may not be sensitive to the ranking of genes.
 
-**2.Fast Gene Set Enrichment Analysis (fGSEA)**
+**2. Gene Set Enrichment Analysis (GSEA)**
+
+- *Definition:* GSEA is a computational method used to determine whether a predefined 
+set of genes shows statistically significant differences between two biological 
+states or conditions based on a ranked list of genes.
+
+- *Goal:* The goal of GSEA is to identify whether specific gene sets are overrepresented 
+or enriched in a ranked list of genes, which is derived from differential expression 
+analysis. GSEA is particularly useful for analyzing genome-wide expression profiles 
+to determine whether gene sets are preferentially located at the top or bottom of 
+the ranked list.
+
+- *Method:* 
+
+  - **Step 1: Calculation of Enrichment Score (ES)** 
+  
+  GSEA calculates an enrichment score that reflects the degree to which a gene set 
+  is overrepresented at the extremes (top or bottom) of the ranked list. The score 
+  is derived from a running-sum statistic, which increases when encountering genes 
+  in the set and decreases otherwise, with the magnitude of the increment based 
+  on the gene’s correlation with the phenotype.
+  
+  - **Step 2: Estimation of Significance Level of ES** 
+  
+  Significance is estimated using permutation-based tests, where phenotype labels 
+  are permuted to create a null distribution for the ES. The empirical p-value is 
+  calculated based on this distribution.
+  
+  - **Step 3: Adjustment for Multiple Hypothesis Testing** 
+  The method normalizes the ES for each gene set to yield a normalized enrichment 
+  score (NES). The false discovery rate (FDR) is calculated to control the proportion 
+  of false positives.
+  
+- *Sensitivity:* GSEA is sensitive to the choice of background gene set and requires 
+careful selection to avoid misleading results. It uses the entire ranked list of 
+genes and does not rely on arbitrary cut-offs due to its rank-based. However, this 
+sometimes results in gene sets/pathways that end up showing the strongest enrichment
+are driven by genes that would not necessarily meet the traditional FDR cut-off. 
+These genes are normally referred to as **"leading genes"**.
+
+- *Input:* GSEA requires a full, pre-ranked list of genes based on metrics such as 
+p-values or Log2FC.
+
+**3.Fast Gene Set Enrichment Analysis (fGSEA)**
 
 - *Definition:* fGSEA is an adaptation of GSEA designed to provide faster and 
 computationally efficient enrichment analysis using approximation techniques.
@@ -2425,115 +2470,117 @@ computationally efficient enrichment analysis using approximation techniques.
 reducing the computation time required for large datasets.
 
 - *Method:* fGSEA employs fast approximation methods for calculating enrichment scores,
-which simplifies the process but rely on a pre-ranked list of gene, either by p-values
-or log2FC.
+which simplifies the process 
 
 - *Flexibility:* fGSEA is more robust to variations in the background gene set due to
 its approximation techniques but can still benefit from a well-chosen background for 
-accurate interpretation.
+accurate interpretation. The output of fGSEA are leading genes, which is similar to GSEA.
+
+- *Input:* fGSEA requires a full, pre-ranked list of genes based on metrics such as 
+p-values or Log2FC.
 
 Ref for Overview of GSEA: 
-https://yulab-smu.top/biomedical-knowledge-mining-book/enrichment-overview.html
+https://www.pnas.org/doi/full/10.1073/pnas.0506580102
 
-Ref for GSEA with GO database using `clusterProfiler`: https://yulab-smu.top/biomedical-knowledge-mining-book/clusterprofiler-go.html
+Ref for enrichment analysis with GO database using `clusterProfiler`: https://yulab-smu.top/biomedical-knowledge-mining-book/clusterprofiler-go.html
 
-Ref for GSEA with KEGG database using `clusterProfiler`:
+Ref for enrichment analysis with KEGG database using `clusterProfiler`:
 https://yulab-smu.top/biomedical-knowledge-mining-book/clusterprofiler-kegg.html
 
-Ref for GSEA with KEGG database using `clusterProfiler`:
+Ref for enrichment analysis with KEGG database using `clusterProfiler`:
 https://yulab-smu.top/biomedical-knowledge-mining-book/reactomepa.html
 
 
-```{r func_GSEA_KEGG_GO_Reactome}
-# Create a function to perform GSEA on common databases, including KEGG, GO, and 
+```{r func_EA_KEGG_GO_Reactome}
+# Create a function to perform EA on common databases, including KEGG, GO, and 
 # Reactome
-GSEAPerform_KEGG_GO_Reactome <- function(EntrezGeneList,
-                                         metaOuput,
-                                         pvalueCutOff,
-                                         qvalueCutOff){
+EAPerform_KEGG_GO_Reactome <- function(EntrezGeneList,
+                                       metaOuput,
+                                       pvalueCutOff,
+                                       qvalueCutOff){
   
-  # Perform GSEA with KEGG database 
-  KEGG_GSEA_result <- enrichKEGG(gene = EntrezGeneList,
-                                 # Organism code for Mus musculus
-                                 organism = "mmu",
-                                 # Address the background gene set (output of meta-analysis)
-                                 universe = metaOuput,
-                                 # p-value cut off
-                                 pvalueCutoff = pvalueCutOff,
-                                 # Choose the method for FDR of GSEA (Benjamini-Hochberg)
-                                 pAdjustMethod = "BH",
-                                 # FDR cut off
-                                 qvalueCutoff = qvalueCutOff)
+  # Perform EA with KEGG database 
+  KEGG_EA_result <- enrichKEGG(gene = EntrezGeneList,
+                               # Organism code for Mus musculus
+                               organism = "mmu",
+                               # Address the background gene set (output of meta-analysis)
+                               universe = metaOuput,
+                               # p-value cut off
+                               pvalueCutoff = pvalueCutOff,
+                               # Choose the method for FDR of GSEA (Benjamini-Hochberg)
+                               pAdjustMethod = "BH",
+                               # FDR cut off
+                               qvalueCutoff = qvalueCutOff)
   
-  # Perform GSEA with GO database 
-  GO_GSEA_result <- enrichGO(gene = EntrezGeneList,
-                             # Select database for Mus musculus
-                             OrgDb = org.Mm.eg.db,
-                             # Ontology for biological process
-                             # Other ontologies include "MF" for Molecular Function
-                             # and "CC" for Cellular Component 
-                             ont = "BP", 
-                             # Address the background gene set (output of meta-analysis)
-                             universe = metaOuput,
-                             # p-value cut off
-                             pvalueCutoff = pvalueCutOff,
-                             # Choose the method for FDR of GSEA (Benjamini-Hochberg)
-                             pAdjustMethod = "BH",
-                             # FDR cut off
-                             qvalueCutoff = qvalueCutOff)
+  # Perform EA with GO database 
+  GO_EA_result <- enrichGO(gene = EntrezGeneList,
+                           # Select database for Mus musculus
+                           OrgDb = org.Mm.eg.db,
+                           # Ontology for biological process
+                           # Other ontologies include "MF" for Molecular Function
+                           # and "CC" for Cellular Component 
+                           ont = "BP", 
+                           # Address the background gene set (output of meta-analysis)
+                           universe = metaOuput,
+                           # p-value cut off
+                           pvalueCutoff = pvalueCutOff,
+                           # Choose the method for FDR of GSEA (Benjamini-Hochberg)
+                           pAdjustMethod = "BH",
+                           # FDR cut off
+                           qvalueCutoff = qvalueCutOff)
   
-  # Perform GSEA with Reactome database 
-  Reactome_GSEA_result <- enrichPathway(gene = EntrezGeneList,
-                                        # Organism code for Mus musculus
-                                        organism = "mouse",
-                                        # Address the background gene set (output of meta-analysis)
-                                        universe = metaOuput,
-                                        # p-value cut off
-                                        pvalueCutoff = pvalueCutOff,
-                                        # Choose the method for FDR of GSEA (Benjamini-Hochberg)
-                                        pAdjustMethod = "BH",
-                                        # FDR cut off
-                                        qvalueCutoff = qvalueCutOff)
+  # Perform EA with Reactome database 
+  Reactome_EA_result <- enrichPathway(gene = EntrezGeneList,
+                                      # Organism code for Mus musculus
+                                      organism = "mouse",
+                                      # Address the background gene set (output of meta-analysis)
+                                      universe = metaOuput,
+                                      # p-value cut off
+                                      pvalueCutoff = pvalueCutOff,
+                                      # Choose the method for FDR of GSEA (Benjamini-Hochberg)
+                                      pAdjustMethod = "BH",
+                                      # FDR cut off
+                                      qvalueCutoff = qvalueCutOff)
   
   # Return the list of results
-  return(list(KEGG = KEGG_GSEA_result, 
-              GO = GO_GSEA_result,
-              Reactome = Reactome_GSEA_result))
+  return(list(KEGG = KEGG_EA_result, 
+              GO = GO_EA_result,
+              Reactome = Reactome_EA_result))
 }
 ```
 
 
-```{r run_GSEA_KEGG_GO_Reactome, cache = TRUE}
+```{r run_EA_KEGG_GO_Reactome, cache = TRUE}
 # Function use
 EntrezGeneList_metaOutputFDR_0NA <- as.character(metaOutputFDR_Annotated_0NA$Mouse_EntrezGene.ID)
 
-GSEA_Log2FC_1_0NA <- GSEAPerform_KEGG_GO_Reactome(EntrezGeneList_OrderbyPval_Log2FC_1_0NA,
-                                                  EntrezGeneList_metaOutputFDR_0NA,
-                                                  0.05,
-                                                  0.05)
+EA_Log2FC_1_0NA <- EAPerform_KEGG_GO_Reactome(EntrezGeneList_OrderbyPval_Log2FC_1_0NA,
+                                              EntrezGeneList_metaOutputFDR_0NA,
+                                              0.05,
+                                              0.05)
 
-GSEA_Log2FC_2_0NA <- GSEAPerform_KEGG_GO_Reactome(EntrezGeneList_OrderbyPval_Log2FC_2_0NA,
-                                                  EntrezGeneList_metaOutputFDR_0NA,
-                                                  0.05,
-                                                  0.05)
+EA_Log2FC_2_0NA <- EAPerform_KEGG_GO_Reactome(EntrezGeneList_OrderbyPval_Log2FC_2_0NA,
+                                              EntrezGeneList_metaOutputFDR_0NA,
+                                              0.05,
+                                              0.05)
 
 ```
 
 
 ```{r plot_GSEA_KEGG, cache = TRUE}
-# Visualize the GSEA results with KEGG database 
+# Visualize the EA results with KEGG database 
 
 # Top 10 pathways using barplot presentation for genes with |Log2FC| > 1 and FDR < 0.05
 
-# png("GSEA_Log2FC_1_0NA_KEGG.png", 8, 5, "in", res = 300)
-barplot(GSEA_Log2FC_1_0NA$KEGG, showCategory = 10, font.size = 7)
+# png("EA_Log2FC_1_0NA_KEGG.png", 8, 5, "in", res = 300)
+barplot(EA_Log2FC_1_0NA$KEGG, showCategory = 10, font.size = 7)
 # dev.off()
 
 
 # Top 10 pathways using barplot presentation for genes with |Log2FC| > 2 and FDR < 0.05
 
-# png("GSEA_Log2FC_2_0NA_KEGG.png", 8, 5, "in", res = 300)
-barplot(GSEA_Log2FC_2_0NA$KEGG, showCategory = 10, font.size = 7)
+# png("EA_Log2FC_2_0NA_KEGG.png", 8, 5, "in", res = 300)
+barplot(EA_Log2FC_2_0NA$KEGG, showCategory = 10, font.size = 7)
 # dev.off()
 
 
@@ -2588,28 +2635,28 @@ mmu04061 <- pathview(gene.data = KEGGgenedata_metaOutputFDR_Log2FC_1_0NA,
 
 
 ```{r plot_GSEA_GO, cache = TRUE}
-# Visualize the GSEA results with GO database 
+# Visualize the EA results with GO database 
 
 # Visualize the results with directed acyclic graph
 
-# png("GSEA_Log2FC_1_0NA_GO_Network.png", 8, 5, "in", res = 300)
-goplot(GSEA_Log2FC_1_0NA$GO)
+# png("EA_Log2FC_1_0NA_GO_Network.png", 8, 5, "in", res = 300)
+goplot(EA_Log2FC_1_0NA$GO)
 # dev.off()
 
-# png("GSEA_Log2FC_2_0NA_GO_Network.png", 8, 5, "in", res = 300)
-goplot(GSEA_Log2FC_2_0NA$GO)
+# png("EA_Log2FC_2_0NA_GO_Network.png", 8, 5, "in", res = 300)
+goplot(EA_Log2FC_2_0NA$GO)
 # dev.off()
 
 # Top 10 pathways using barplot presentation for genes with |Log2FC| > 1 and FDR < 0.05
 
-# png("GSEA_Log2FC_1_0NA_GO.png", 8, 5, "in", res = 300)
-barplot(GSEA_Log2FC_1_0NA$GO, showCategory = 10, font.size = 7)
+# png("EA_Log2FC_1_0NA_GO.png", 8, 5, "in", res = 300)
+barplot(EA_Log2FC_1_0NA$GO, showCategory = 10, font.size = 7)
 # dev.off()
 
 # Top 10 pathways using barplot presentation for genes with |Log2FC| > 2 and FDR < 0.05
 
-# png("GSEA_Log2FC_2_0NA_GO.png", 8, 5, "in", res = 300)
-barplot(GSEA_Log2FC_2_0NA$GO, showCategory = 10, font.size = 7)
+# png("EA_Log2FC_2_0NA_GO.png", 8, 5, "in", res = 300)
+barplot(EA_Log2FC_2_0NA$GO, showCategory = 10, font.size = 7)
 # dev.off()
 ```
 
@@ -2619,14 +2666,14 @@ barplot(GSEA_Log2FC_2_0NA$GO, showCategory = 10, font.size = 7)
 
 # Top 10 pathways using barplot presentation for genes with |Log2FC| > 1 and FDR < 0.05
 
-# png("GSEA_Log2FC_1_0NA_Reactome.png", 8, 5, "in", res = 300)
-barplot(GSEA_Log2FC_1_0NA$Reactome, showCategory = 10, font.size = 7)
+# png("EA_Log2FC_1_0NA_Reactome.png", 8, 5, "in", res = 300)
+barplot(EA_Log2FC_1_0NA$Reactome, showCategory = 10, font.size = 7)
 # dev.off()
 
 # Top 10 pathways using barplot presentation for genes with |Log2FC| > 2 and FDR < 0.05
 
-# png("GSEA_Log2FC_2_0NA_Reactome.png", 8, 5, "in", res = 300)
-barplot(GSEA_Log2FC_2_0NA$Reactome, showCategory = 10, font.size = 7)
+# png("EA_Log2FC_2_0NA_Reactome.png", 8, 5, "in", res = 300)
+barplot(EA_Log2FC_2_0NA$Reactome, showCategory = 10, font.size = 7)
 # dev.off()
 ```
 
@@ -2634,29 +2681,29 @@ barplot(GSEA_Log2FC_2_0NA$Reactome, showCategory = 10, font.size = 7)
 ```{r export_GSEA, cache = TRUE}
 # Transform the matched pathways results into dataframes and export into the working
 # directory
-GSEA_Log2FC_1_0NA_KEGG <- as.data.frame(GSEA_Log2FC_1_0NA$KEGG)
-row.names(GSEA_Log2FC_1_0NA_KEGG) <- NULL
-write.csv(GSEA_Log2FC_1_0NA_KEGG, "GSEA_Log2FC_1_0NA_KEGG.csv")
+EA_Log2FC_1_0NA_KEGG <- as.data.frame(EA_Log2FC_1_0NA$KEGG)
+row.names(EA_Log2FC_1_0NA_KEGG) <- NULL
+write.csv(EA_Log2FC_1_0NA_KEGG, "EA_Log2FC_1_0NA_KEGG.csv")
 
-GSEA_Log2FC_2_0NA_KEGG <- as.data.frame(GSEA_Log2FC_2_0NA$KEGG)
-row.names(GSEA_Log2FC_2_0NA_KEGG) <- NULL
-write.csv(GSEA_Log2FC_2_0NA_KEGG, "GSEA_Log2FC_2_0NA_KEGG.csv")
+EA_Log2FC_2_0NA_KEGG <- as.data.frame(EA_Log2FC_2_0NA$KEGG)
+row.names(EA_Log2FC_2_0NA_KEGG) <- NULL
+write.csv(EA_Log2FC_2_0NA_KEGG, "EA_Log2FC_2_0NA_KEGG.csv")
 
-GSEA_Log2FC_1_0NA_GO <- as.data.frame(GSEA_Log2FC_1_0NA$GO)
-row.names(GSEA_Log2FC_1_0NA_GO) <- NULL
-write.csv(GSEA_Log2FC_1_0NA_GO, "GSEA_Log2FC_1_0NA_GO.csv")
+EA_Log2FC_1_0NA_GO <- as.data.frame(EA_Log2FC_1_0NA$GO)
+row.names(EA_Log2FC_1_0NA_GO) <- NULL
+write.csv(EA_Log2FC_1_0NA_GO, "EA_Log2FC_1_0NA_GO.csv")
 
-GSEA_Log2FC_2_0NA_GO <- as.data.frame(GSEA_Log2FC_2_0NA$GO)
-row.names(GSEA_Log2FC_2_0NA_GO) <- NULL
-write.csv(GSEA_Log2FC_2_0NA_GO, "GSEA_Log2FC_2_0NA_GO.csv")
+EA_Log2FC_2_0NA_GO <- as.data.frame(EA_Log2FC_2_0NA$GO)
+row.names(EA_Log2FC_2_0NA_GO) <- NULL
+write.csv(EA_Log2FC_2_0NA_GO, "EA_Log2FC_2_0NA_GO.csv")
 
-GSEA_Log2FC_1_0NA_Reactome <- as.data.frame(GSEA_Log2FC_1_0NA$Reactome)
-row.names(GSEA_Log2FC_1_0NA_Reactome) <- NULL
-write.csv(GSEA_Log2FC_1_0NA_Reactome, "GSEA_Log2FC_1_0NA_Reactome.csv")
+EA_Log2FC_1_0NA_Reactome <- as.data.frame(EA_Log2FC_1_0NA$Reactome)
+row.names(EA_Log2FC_1_0NA_Reactome) <- NULL
+write.csv(EA_Log2FC_1_0NA_Reactome, "EA_Log2FC_1_0NA_Reactome.csv")
 
-GSEA_Log2FC_2_0NA_Reactome <- as.data.frame(GSEA_Log2FC_2_0NA$Reactome)
-row.names(GSEA_Log2FC_2_0NA_Reactome) <- NULL
-write.csv(GSEA_Log2FC_2_0NA_Reactome, "GSEA_Log2FC_2_0NA_Reactome.csv")
+EA_Log2FC_2_0NA_Reactome <- as.data.frame(EA_Log2FC_2_0NA$Reactome)
+row.names(EA_Log2FC_2_0NA_Reactome) <- NULL
+write.csv(EA_Log2FC_2_0NA_Reactome, "EA_Log2FC_2_0NA_Reactome.csv")
 ```
 
 
@@ -2714,56 +2761,57 @@ in this database.
 
 Use all of the meta-analysis output and ordered it by Log2FC values (pre-ranked lists)
 
-```{r run_GSEA_BrainGMT_1, cache = TRUE}
+```{r run_GSEA_BrainGMT, cache = TRUE}
 # fGSEA uses the entirety of the gene list but need to pre-ranked with either p-values
 # or Log2FC. For Brain.GMT, we use gene list pre-ranked by Log2FC. 
 
 # Create a named vector from meta-analysis output
 # Names = Mouse gene symbol | Values = Log2FC estimate
-# FDR < 0.05 | |Log2FC| > 1
 
-BrainGMTgenedata_metaOutputFDR_Log2FC_1_0NA <- setNames(
-  metaOutputFDR_OrderbyPval_Log2FC_1_0NA$Log2FC_estimate,
-  metaOutputFDR_OrderbyPval_Log2FC_1_0NA$Mouse_Symbol
+BrainGMTgenedata_metaOutputFDR_0NA <- setNames(
+  metaOutputFDR_Annotated_0NA$Log2FC_estimate,
+  metaOutputFDR_Annotated_0NA$Mouse_Symbol
 )
 
 # Remove genes with NA or duplicated names
-BrainGMTgenedata_metaOutputFDR_Log2FC_1_0NA_cleaned <- BrainGMTgenedata_metaOutputFDR_Log2FC_1_0NA %>%
+BrainGMTgenedata_metaOutputFDR_0NA_cleaned <- BrainGMTgenedata_metaOutputFDR_0NA %>%
   # Convert to dataframe for easier manipulation
   enframe(name = "gene_name", value = "Log2FC_estimate") %>%
   # Remove rows with NA names
   filter(!is.na(gene_name)) %>%
+  # Remove rows with finite Log2FC values 
+  filter(is.finite(Log2FC_estimate)) %>%
   # Remove duplicated names, keeping the first instance
   distinct(gene_name, .keep_all = TRUE) %>%
   # Convert back to named vector
   deframe()
 
 # Order the vector by Log2FC in ascending order
-BrainGMTgenedata_metaOutputFDR_OrderedByLog2FC_1_0NA <- BrainGMTgenedata_metaOutputFDR_Log2FC_1_0NA_cleaned[order(BrainGMTgenedata_metaOutputFDR_Log2FC_1_0NA_cleaned)]
+BrainGMTgenedata_metaOutputFDR_OrderedbyLog2FC_0NA <- BrainGMTgenedata_metaOutputFDR_0NA_cleaned[order(BrainGMTgenedata_metaOutputFDR_0NA_cleaned)]
 
 # Import the Brain.GMT for the specific species of interest
 # Ignore the warning about incomplete line 
-BrainGMT_Mouse <- gmtPathways("BrainGMTv2_MouseOrthologs.gmt.txt")
+BrainGMT_Mouse <- gmtPathways("BrainGMTv2_wGO_MouseOrthologs.gmt.txt")
 
 # Perform fast fGSEA with Brain.GMT
-GSEA_Log2FC_1_0NA_BrainGMT <- fgseaSimple(BrainGMT_Mouse, 
-                                          BrainGMTgenedata_metaOutputFDR_OrderedByLog2FC_1_0NA,
-                                          # Number of permutations for the GSEA
-                                          nperm = 10000,
-                                          # Minimum size of gene sets to consider
-                                          minSize = 10,
-                                          # Maximum size of gene sets to consider 
-                                          maxSize = 1000)
+fGSEA_0NA_BrainGMT <- fgseaSimple(BrainGMT_Mouse, 
+                                  BrainGMTgenedata_metaOutputFDR_OrderedbyLog2FC_0NA,
+                                  # Number of permutations for the GSEA
+                                  nperm = 10000,
+                                  # Minimum size of gene sets to consider
+                                  minSize = 10,
+                                  # Maximum size of gene sets to consider 
+                                  maxSize = 1000)
 
 # Converts the list of leading edge genes (genes contributing to enrichment) in 
 # the GSEA results to a comma-separated string
-GSEA_Log2FC_1_0NA_BrainGMT$leadingEdge <- vapply(GSEA_Log2FC_1_0NA_BrainGMT$leadingEdge, 
-                                                 paste, 
-                                                 collapse= ",", 
-                                                 character(1L))
+fGSEA_0NA_BrainGMT$leadingEdge <- vapply(fGSEA_0NA_BrainGMT$leadingEdge, 
+                                         paste, 
+                                         collapse= ",", 
+                                         character(1L))
 
 # Export the matched pathways into the working directory
-write.csv(GSEA_Log2FC_1_0NA_BrainGMT, "GSEA_Log2FC_1_0NA_BrainGMT.csv")
+write.csv(fGSEA_0NA_BrainGMT, "fGSEA_0NA_BrainGMT.csv")
 
 # It is not sorted by p-value?
 # padj: FDR corrected p-value (using familywise-error rate???)
@@ -2777,51 +2825,3 @@ write.csv(GSEA_Log2FC_1_0NA_BrainGMT, "GSEA_Log2FC_1_0NA_BrainGMT.csv")
 # Size???
 ```
 
-
-```{r run_GSEA_BrainGMT_2, cache = TRUE}
-# fGSEA uses the entirety of the gene list but need to pre-ranked with either p-values
-# or Log2FC. For Brain.GMT, we use gene list pre-ranked by Log2FC. 
-
-# Create a named vector from meta-analysis output
-# Names = Mouse gene symbol | Values = Log2FC estimate
-# FDR < 0.05 | |Log2FC| > 2
-
-BrainGMTgenedata_metaOutputFDR_Log2FC_2_0NA <- setNames(
-  metaOutputFDR_OrderbyPval_Log2FC_2_0NA$Log2FC_estimate,
-  metaOutputFDR_OrderbyPval_Log2FC_2_0NA$Mouse_Symbol
-)
-
-# Remove genes with NA or duplicated names
-BrainGMTgenedata_metaOutputFDR_log2FC_2_0NA_cleaned <- BrainGMTgenedata_metaOutputFDR_Log2FC_2_0NA %>%
-  # Convert to dataframe for easier manipulation
-  enframe(name = "gene_name", value = "Log2FC_estimate") %>%
-  # Remove rows with NA names
-  filter(!is.na(gene_name)) %>%
-  # Remove duplicated names, keeping the first instance
-  distinct(gene_name, .keep_all = TRUE) %>%
-  # Convert back to named vector
-  deframe()
-
-# Order the vector by Log2FC in ascending order
-BrainGMTgenedata_metaOutputFDR_OrderedByLog2FC_2_0NA <- BrainGMTgenedata_metaOutputFDR_log2FC_2_0NA_cleaned[order(BrainGMTgenedata_metaOutputFDR_log2FC_2_0NA_cleaned)]
-
-# Perform fast fGSEA with Brain.GMT
-GSEA_Log2FC_2_0NA_BrainGMT <- fgseaSimple(BrainGMT_Mouse, 
-                                          BrainGMTgenedata_metaOutputFDR_OrderedByLog2FC_2_0NA,
-                                          # Number of permutations for the GSEA
-                                          nperm = 10000,
-                                          # Minimum size of gene sets to consider
-                                          minSize = 10,
-                                          # Maximum size of gene sets to consider 
-                                          maxSize = 1000)
-
-# Converts the list of leading edge genes (genes contributing to enrichment) in 
-# the GSEA results to a comma-separated string
-GSEA_Log2FC_2_0NA_BrainGMT$leadingEdge <- vapply(GSEA_Log2FC_2_0NA_BrainGMT$leadingEdge, 
-                                                 paste, 
-                                                 collapse= ",", 
-                                                 character(1L))
-
-# Export the matched pathways into the working directory
-write.csv(GSEA_Log2FC_2_0NA_BrainGMT, "GSEA_Log2FC_2_0NA_BrainGMT.csv")
-```

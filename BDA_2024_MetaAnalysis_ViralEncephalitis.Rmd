@@ -380,8 +380,8 @@ Neuroinflammatory <- searchDatasets("Neuroinflammatory", limit = 100)
 Neurotropic <- searchDatasets("Neurotropic", limit = 100)
 Neuroinvasive <- searchDatasets("Neuroinvasive", limit = 100)
 Neurovirulence <- searchDatasets("Neurovirulence", limit = 100)
-Viral = <- searchDatasets("Viral", limit = 100)
-Virus = <- searchDatasets("Virus", limit = 100)
+Viral <- searchDatasets("Viral", limit = 100)
+Virus <- searchDatasets("Virus", limit = 100)
 Infection <- searchDatasets("Infection", limit = 100)
 Viral_Infection <- searchDatasets("Viral Infection", limit = 100)
 Brain_Infection <- searchDatasets("Brain Infection", limit = 100)
@@ -485,9 +485,9 @@ CheckGeneExpressionRange <- function(dataset_shortname){
   # Log 2 Microarray dataset has the range between 4 to 15
   
   # Calculate the min, median, max values of the expression data
-  min_val <- min(expression_matrix)
-  median_val <- median(expression_matrix)
-  max_val <- max(expression_matrix)
+  min_val <- min(expression_matrix, na.rm = TRUE)
+  median_val <- median(expression_matrix, na.rm = TRUE)
+  max_val <- max(expression_matrix, na.rm= TRUE)
   
   # Print the calculated values
   print(paste("Minimum value:", min_val))
@@ -638,7 +638,7 @@ GettingResultSetInfoForDatasets <- function(ExperimentIDs) {
 ```
 
 
-```{r run_contrast_extract}
+```{r run_contrast_extract, cache = TRUE}
 # Set up a vector of the names of all datasets
 ExperimentIDs <- c("GSE30577", "GSE42264", "GSE44331", 
                    "GSE51365", "GSE53784","GSE91074")
@@ -660,7 +660,7 @@ DownloadingDEResults <- function(ResultSets_contrasts){
   UniqueResultSetIDs <- unique(ResultSets_contrasts$ResultSetIDs) 
   
   # Print the identified unique ResultSet IDs
-  print("ResultSets identified as being of interest")
+  print("ResultSets identified as being of interest:")
   print(UniqueResultSetIDs)
   
   # Download DE results for each unique ResultSet ID
@@ -1112,10 +1112,10 @@ CollapsingDEResults_OneResultPerGene<-function(GSE_ID,
   for(i in c(1:length(NamesOfFoldChangeColumns))){
     
     # Select the Log2FC column of interest
-    FoldChangeColumn <- select(DE_Results_GoodAnnotation, NamesOfFoldChangeColumns[i])
+    FoldChangeColumn <- dplyr::select(DE_Results_GoodAnnotation, NamesOfFoldChangeColumns[i])
     
     # Select the T-stat column of interest
-    TstatColumn <- select(DE_Results_GoodAnnotation, NamesOfTstatColumns[i])
+    TstatColumn <- dplyr::select(DE_Results_GoodAnnotation, NamesOfTstatColumns[i])
     
     # Calculate the standard error (SE)
     DE_Results_GoodAnnotation_SE <- FoldChangeColumn[[1]]/TstatColumn[[1]]
@@ -1325,7 +1325,7 @@ AligningMouseDatasets <- function(ListOfMouseDEResults){
   
   # Loop through all mouse DE results
   for(i in c(1:length(ListOfMouseDEResults))){
-    # When did the row name become IDs?
+
     # Extract the Log2FC values from each dataset and put them into separate list
     # The element from the "Collapsing_DEResults_" has the format of row names
     # as Entrez Gene ID and columns containing Log2FC values
@@ -1353,6 +1353,7 @@ AligningMouseDatasets <- function(ListOfMouseDEResults){
   
   # Loop through all mouse DE results 
   for(i in c(1:length(ListOfMouseDEResults))){
+    
     # Extract the SV values from each dataset and put them into separate list
     # The element from the "Collapsing_DEResults_" has the format of row names
     # as Entrez Gene ID and columns containing SV values
@@ -1368,8 +1369,8 @@ AligningMouseDatasets <- function(ListOfMouseDEResults){
   # ALign the DE results by Entrez Gene ID and turn them into a single dataframe
   # join_all can be used for object of list class
   Mouse_MetaAnalysis_SV <<- join_all(Mouse_MetaAnalysis_SV_Dfs, 
-                                    by = "Mouse_EntrezGene.ID",
-                                    type = "full")
+                                     by = "Mouse_EntrezGene.ID",
+                                     type = "full")
 
   # Print the structure of the aligned SV 
   print("Mouse_MetaAnalysis_SV:")
@@ -1870,18 +1871,48 @@ FalseDiscoveryCorrection <- function(NumberOfNAs,
   print("# of genes that are statistically significant following loose FDR correction (FDR < 0.10):")
   print(sum(metaOutputFDR_annotated$FDR < 0.10, na.rm = TRUE))
   
+  print("# of upregulated genes that are statistically significant following loose FDR correction (FDR < 0.10):")
+  print(sum(metaOutputFDR_annotated$FDR < 0.10 & metaOutputFDR_annotated$Log2FC_estimate > 0, na.rm = TRUE))
+  
+  print("# of downregulated genes that are statistically significant following loose FDR correction (FDR < 0.10):")
+  print(sum(metaOutputFDR_annotated$FDR < 0.10 & metaOutputFDR_annotated$Log2FC_estimate < 0, na.rm = TRUE))
+  
   # Print genes with FDR < 0.05
   print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05):")
   print(sum(metaOutputFDR_annotated$FDR < 0.05, na.rm = TRUE))
   
-  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 2:")
+  print("# of upregulated genes that are statistically significant following traditional FDR correction (FDR < 0.05):")
+  print(sum(metaOutputFDR_annotated$FDR < 0.05 & metaOutputFDR_annotated$Log2FC_estimate > 0, na.rm = TRUE))
+  
+  print("# of downregulated genes that are statistically significant following traditional FDR correction (FDR < 0.05):")
+  print(sum(metaOutputFDR_annotated$FDR < 0.05 & metaOutputFDR_annotated$Log2FC_estimate < 0, na.rm = TRUE))
+  
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 2:")
   print(sum(metaOutputFDR_OrderbyPval_Log2FC_2$FDR < 0.05, na.rm = TRUE))
   
-  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 1:")
+  print("# of upregulated genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 2:")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_2$FDR < 0.05 & metaOutputFDR_OrderbyPval_Log2FC_2$Log2FC_estimate > 0, na.rm = TRUE))
+  
+  print("# of downregulated genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 2:")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_2$FDR < 0.05 & metaOutputFDR_OrderbyPval_Log2FC_2$Log2FC_estimate < 0, na.rm = TRUE))
+  
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 1:")
   print(sum(metaOutputFDR_OrderbyPval_Log2FC_1$FDR < 0.05, na.rm = TRUE))
   
-  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| > 0.5:")
+  print("# of upregulated genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 1:")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_1$FDR < 0.05 & metaOutputFDR_OrderbyPval_Log2FC_1$Log2FC_estimate > 0, na.rm = TRUE))
+  
+  print("# of downregulated genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 1:")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_1$FDR < 0.05 & metaOutputFDR_OrderbyPval_Log2FC_1$Log2FC_estimate < 0, na.rm = TRUE))
+  
+  print("# of genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 0.5:")
   print(sum(metaOutputFDR_OrderbyPval_Log2FC_0.5$FDR < 0.05, na.rm = TRUE))
+  
+  print("# of upregulated genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 0.5:")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_0.5$FDR < 0.05 & metaOutputFDR_OrderbyPval_Log2FC_0.5$Log2FC_estimate > 0, na.rm = TRUE))
+  
+  print("# of downregulated genes that are statistically significant following traditional FDR correction (FDR < 0.05) and |Log2FC| ≥ 0.5:")
+  print(sum(metaOutputFDR_OrderbyPval_Log2FC_0.5$FDR < 0.05 & metaOutputFDR_OrderbyPval_Log2FC_0.5$Log2FC_estimate < 0, na.rm = TRUE))
   
   # Print top results in mouse genes
   print("Top 20 results ordered by p-values in mouse genes:")
@@ -2106,7 +2137,7 @@ MakeForestPlots(metaOutputFDR_Annotated_0NA,
 ```{r run_forest_plot_2, cache = TRUE}
 # Function use
 
-# Top genes ordered by p-values with |Log2FC| >= 1 
+# Top genes ordered by p-values with |Log2FC| ≥ 1 
 
 # Gbp3
 MakeForestPlots(metaOutputFDR_Annotated_0NA,
@@ -2369,13 +2400,13 @@ GetGeneFunctionByID <- function(NumberOfNAs, Log2FCThreshold, EntrezGeneList) {
 ```
 
 
-```{r run_extract_gene_function, cache = TRUE, message = FALSE}
-# Extract gene entrez ID for genes with FDR < 0.05 & |Log2FC| > 1
+```{r run_extract_gene_function, cache = TRUE}
+# Extract gene entrez ID for genes with FDR < 0.05 & |Log2FC| ≥ 1
 EntrezGeneList_OrderbyPval_Log2FC_1_0NA <- metaOutputFDR_OrderbyPval_Log2FC_1_0NA %>%
   filter(FDR < 0.05) %>%
   pull(Mouse_EntrezGene.ID)
 
-# Extract gene entrez ID for genes with FDR < 0.05 & |Log2FC| > 2
+# Extract gene entrez ID for genes with FDR < 0.05 & |Log2FC| ≥ 2
 EntrezGeneList_OrderbyPval_Log2FC_2_0NA <- metaOutputFDR_OrderbyPval_Log2FC_2_0NA %>%
   filter(FDR < 0.05) %>%
   pull(Mouse_EntrezGene.ID)
@@ -2391,6 +2422,7 @@ GeneFunction_Log2FC_2_0NA <- GetGeneFunctionByID(0,
 
 # Check the structure of the output
 str(GeneFunction_Log2FC_1_0NA)
+str(GeneFunction_Log2FC_2_0NA)
 ```
 
 
@@ -2478,6 +2510,15 @@ accurate interpretation. The output of fGSEA are leading genes, which is similar
 
 - *Input:* fGSEA requires a full, pre-ranked list of genes based on metrics such as 
 p-values or Log2FC.
+
+
+| Feature                | Enrichment Analysis       | GSEA                 | fGSEA                |
+|------------------------|----------------------------|----------------------|----------------------|
+| Requires ranked gene list | No                         | Yes                  | Yes                  |
+| Statistical test       | Various (e.g., Fisher's exact, hypergeometric) | Permutation-based     | Approximation-based   |
+| Computational efficiency | Fast                       | Slow                 | Fast                 |
+| Sensitivity to background | Less sensitive            | Sensitive            | Less sensitive        |
+
 
 Ref for Overview of GSEA: 
 https://www.pnas.org/doi/full/10.1073/pnas.0506580102
@@ -2570,14 +2611,14 @@ EA_Log2FC_2_0NA <- EAPerform_KEGG_GO_Reactome(EntrezGeneList_OrderbyPval_Log2FC_
 ```{r plot_GSEA_KEGG, cache = TRUE}
 # Visualize the EA results with KEGG database 
 
-# Top 10 pathways using barplot presentation for genes with |Log2FC| > 1 and FDR < 0.05
+# Top 10 pathways using barplot presentation for genes with FDR < 0.05 and with |Log2FC| ≥ 1
 
 # png("EA_Log2FC_1_0NA_KEGG.png", 8, 5, "in", res = 300)
 barplot(EA_Log2FC_1_0NA$KEGG, showCategory = 10, font.size = 7)
 # dev.off()
 
 
-# Top 10 pathways using barplot presentation for genes with |Log2FC| > 2 and FDR < 0.05
+# Top 10 pathways using barplot presentation for genes with FDR < 0.05 and with |Log2FC| ≥ 2
 
 # png("EA_Log2FC_2_0NA_KEGG.png", 8, 5, "in", res = 300)
 barplot(EA_Log2FC_2_0NA$KEGG, showCategory = 10, font.size = 7)
@@ -2586,7 +2627,7 @@ barplot(EA_Log2FC_2_0NA$KEGG, showCategory = 10, font.size = 7)
 
 # Visualize individual enriched pathways
 
-# Filter genes with FDR < 0.05 in genes of meta-analysis output with |Log2FC| > 1
+# Filter genes with FDR < 0.05 in genes of meta-analysis output with |Log2FC| ≥ 1
 KEGG_metaOutputFDR_Log2FC_1_0NA_FDR_0.05 <- metaOutputFDR_OrderbyPval_Log2FC_1_0NA %>%
   filter(FDR < 0.05)
 
@@ -2597,7 +2638,7 @@ KEGGgenedata_metaOutputFDR_Log2FC_1_0NA <- setNames(
   KEGG_metaOutputFDR_Log2FC_1_0NA_FDR_0.05$Mouse_EntrezGene.ID
 )
 
-# Filter genes with FDR < 0.05 in genes of meta-analysis output with |Log2FC| > 2
+# Filter genes with FDR < 0.05 in genes of meta-analysis output with |Log2FC| ≥ 2
 KEGG_metaOutputFDR_Log2FC_2_0NA_FDR_0.05 <- metaOutputFDR_OrderbyPval_Log2FC_2_0NA %>%
   filter(FDR < 0.05)
 
@@ -2608,7 +2649,7 @@ KEGGgenedata_metaOutputFDR_Log2FC_2_0NA <- setNames(
   KEGG_metaOutputFDR_Log2FC_2_0NA_FDR_0.05$Mouse_EntrezGene.ID
 )
 
-# Generate pathway view for "mmu05164" with genes of FDR < 0.05 and |Log2FC| > 1
+# Generate pathway view for "mmu05164" with genes of FDR < 0.05 and |Log2FC| ≥ 1
 mmu05164 <- pathview(gene.data = KEGGgenedata_metaOutputFDR_Log2FC_1_0NA,
                      pathway.id = "mmu05164",
                      species = "mmu",
@@ -2616,7 +2657,7 @@ mmu05164 <- pathview(gene.data = KEGGgenedata_metaOutputFDR_Log2FC_1_0NA,
                                            max(KEGGgenedata_metaOutputFDR_Log2FC_1_0NA)), 
                                   cpd = 1))
 
-# Generate pathway view for "mmu04621" with genes of FDR < 0.05 and |Log2FC| > 1
+# Generate pathway view for "mmu04621" with genes of FDR < 0.05 and |Log2FC| ≥ 1
 mmu04621 <- pathview(gene.data = KEGGgenedata_metaOutputFDR_Log2FC_1_0NA,
                      pathway.id = "mmu04621",
                      species = "mmu",
@@ -2624,7 +2665,7 @@ mmu04621 <- pathview(gene.data = KEGGgenedata_metaOutputFDR_Log2FC_1_0NA,
                                            max(KEGGgenedata_metaOutputFDR_Log2FC_1_0NA)), 
                                   cpd = 1))
 
-# Generate pathway view for "mmu04061" with genes of FDR < 0.05 and |Log2FC| > 1
+# Generate pathway view for "mmu04061" with genes of FDR < 0.05 and |Log2FC| ≥ 1
 mmu04061 <- pathview(gene.data = KEGGgenedata_metaOutputFDR_Log2FC_1_0NA,
                      pathway.id = "mmu04061",
                      species = "mmu",
@@ -2647,13 +2688,13 @@ goplot(EA_Log2FC_1_0NA$GO)
 goplot(EA_Log2FC_2_0NA$GO)
 # dev.off()
 
-# Top 10 pathways using barplot presentation for genes with |Log2FC| > 1 and FDR < 0.05
+# Top 10 pathways using barplot presentation for genes with FDR < 0.05 and with |Log2FC| ≥ 1
 
 # png("EA_Log2FC_1_0NA_GO.png", 8, 5, "in", res = 300)
 barplot(EA_Log2FC_1_0NA$GO, showCategory = 10, font.size = 7)
 # dev.off()
 
-# Top 10 pathways using barplot presentation for genes with |Log2FC| > 2 and FDR < 0.05
+# Top 10 pathways using barplot presentation for genes with FDR < 0.05 and with |Log2FC| ≥ 2
 
 # png("EA_Log2FC_2_0NA_GO.png", 8, 5, "in", res = 300)
 barplot(EA_Log2FC_2_0NA$GO, showCategory = 10, font.size = 7)
@@ -2664,13 +2705,13 @@ barplot(EA_Log2FC_2_0NA$GO, showCategory = 10, font.size = 7)
 ```{r plot_GSEA_Reactome, cache = TRUE}
 # Visualize the GSEA results with Reactome database 
 
-# Top 10 pathways using barplot presentation for genes with |Log2FC| > 1 and FDR < 0.05
+# Top 10 pathways using barplot presentation for genes with FDR < 0.05 and with |Log2FC| ≥ 1
 
 # png("EA_Log2FC_1_0NA_Reactome.png", 8, 5, "in", res = 300)
 barplot(EA_Log2FC_1_0NA$Reactome, showCategory = 10, font.size = 7)
 # dev.off()
 
-# Top 10 pathways using barplot presentation for genes with |Log2FC| > 2 and FDR < 0.05
+# Top 10 pathways using barplot presentation for genes with FDR < 0.05 and with |Log2FC| ≥ 2
 
 # png("EA_Log2FC_2_0NA_Reactome.png", 8, 5, "in", res = 300)
 barplot(EA_Log2FC_2_0NA$Reactome, showCategory = 10, font.size = 7)
@@ -2714,7 +2755,7 @@ the interpretation of brain-derived differential expression results, especially
 in studies focused on neuropsychiatric disorders. The Brain.GMT can be used within 
 common pipelines (GSEA, limma, edgeR) to interpret results from 3 species of rat, 
 mouse, human. The database includes 918 gene sets derived from various sources, 
-each curated to be relevant to brain functions, brain celltypes, co-expression networks, 
+each curated to be relevant to brain functions, brain cell types, co-expression networks, 
 and regional gene expression signatures.
 
 Gene sets included in the Brain.GMT:
@@ -2767,7 +2808,6 @@ Use all of the meta-analysis output and ordered it by Log2FC values (pre-ranked 
 
 # Create a named vector from meta-analysis output
 # Names = Mouse gene symbol | Values = Log2FC estimate
-
 BrainGMTgenedata_metaOutputFDR_0NA <- setNames(
   metaOutputFDR_Annotated_0NA$Log2FC_estimate,
   metaOutputFDR_Annotated_0NA$Mouse_Symbol
@@ -2804,24 +2844,94 @@ fGSEA_0NA_BrainGMT <- fgseaSimple(BrainGMT_Mouse,
                                   maxSize = 1000)
 
 # Converts the list of leading edge genes (genes contributing to enrichment) in 
-# the GSEA results to a comma-separated string
+# the fGSEA results to a comma-separated string
 fGSEA_0NA_BrainGMT$leadingEdge <- vapply(fGSEA_0NA_BrainGMT$leadingEdge, 
                                          paste, 
                                          collapse= ",", 
                                          character(1L))
 
+# Order the fGSEA results based on adjusted p-values 
+fGSEA_0NA_BrainGMT <- fGSEA_0NA_BrainGMT %>%
+  arrange(padj)
+
+# Filter the fGSEA results for FDR < 0.01 and count the number of leading edges 
+# in each pathways
+fGSEA_0NA_BrainGMT_FDR_filtered <- fGSEA_0NA_BrainGMT %>%
+  filter(padj < 0.01) %>%
+  mutate(Num_leadingEdge = sapply(strsplit(leadingEdge, ","), length))
+
 # Export the matched pathways into the working directory
 write.csv(fGSEA_0NA_BrainGMT, "fGSEA_0NA_BrainGMT.csv")
-
-# It is not sorted by p-value?
-# padj: FDR corrected p-value (using familywise-error rate???)
-# ES & NES: Enrichment Score and Normalized Enrichment Score for each gene set
-# Positive ES & NES means that the gene set is enriched with upregulation in response
-# to your variable of interest
-# Negative ES & NES means that the gene set is enriched with downregulation in response
-# to your variable of interest
-# leadingEdge: The core of a gene set that accounts for the enrichment signal
-# nMoreExtreme???
-# Size???
+write.csv(fGSEA_0NA_BrainGMT_FDR_filtered, "fGSEA_0NA_BrainGMT_FDR_filtered.csv")
 ```
+
+
+**Interpretation of fGSEA**
+
+**1. padj (Adjusted p-value)**
+
+- *Definition:* This is the p-value adjusted for multiple comparisons for the False 
+Discovery Rate (FDR) using the family-wise error rate method. It controls for the 
+proportion of false positives among the significant results. 
+
+- *Explanation:* A low padj value (e.g., < 0.05) indicates that the enrichment of 
+a gene set is statistically significant after correction for multiple testing, 
+reducing the likelihood of false positives.
+
+**2. ES (Enrichment Score)**
+
+- *Definition:* The Enrichment Score (ES) represents the degree to which a gene set 
+is overrepresented at the top or bottom of a ranked list of genes. It is calculated 
+by walking down the list of pre-ranked genes and increasing a running-sum statistic 
+when a gene in the gene set is encountered and decreasing it when a gene not in 
+the gene set is encountered.
+
+- *Explanation:*
+  - A positive ES suggests that the gene set is enriched among genes that are upregulated 
+  (i.e., genes at the top of the ranked list).
+  - A negative ES indicates that the gene set is enriched among genes that are 
+  downregulated (i.e., genes at the bottom of the ranked list).
+
+**3. NES (Normalized Enrichment Score)**
+
+- *Definition:* The Normalized Enrichment Score (NES) is the enrichment score (ES) 
+that has been normalized across all gene sets to account for differences in gene 
+set size. It allows for comparison between gene sets of different sizes.
+
+- *Explanation:* 
+  - NES adjusts the ES so that it can be compared across gene sets of different sizes:
+    - Positive NES: Indicates the gene set is upregulated in your data.
+    - Negative NES: Indicates the gene set is downregulated in your data.
+    
+**4. leadingEdge**
+
+- *Definition:* The leading-edge subset is the subset of genes in the gene set 
+that contribute most to the enrichment score. These are the genes that appear 
+before the peak enrichment score is reached and thus drive the observed enrichment.
+
+- *Explanation:* This variable contains the "core" genes responsible for the enrichment 
+signal. Understanding which genes are in the leading edge can provide insights into 
+which genes are most responsible for the phenotype of interest.
+
+**5. nMoreExtreme**
+
+- *Definition:* nMoreExtreme represents the number of permutations where the observed 
+ES was more extreme (either higher or lower) than the ES obtained from random permutations 
+of the gene set.
+
+- *Explanation:* This variable helps estimate the empirical p-value for the observed ES. 
+A lower nMoreExtreme value indicates that few random permutations achieved an ES as 
+extreme as the observed one, suggesting that the observed enrichment is unlikely 
+to be due to chance.
+
+**6. Size**
+
+- *Definition:* Size indicates the number of genes in the gene set that overlap 
+with the pre-ranked list of genes used in the enrichment analysis.
+
+- *Explanation:* This is the effective size of the gene set in the context of the 
+analysis. Larger gene sets might have more opportunities to show enrichment, but 
+smaller gene sets can also provide strong signals if their genes are strongly associated 
+with the phenotype of interest.
+
 

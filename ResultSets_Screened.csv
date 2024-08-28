@@ -1,9 +1,0 @@
-,ExperimentIDs,ResultSetIDs,ContrastIDs,FactorCategory,ExperimentalFactors,BaselineFactors,Subsetted,SubsetBy,Include,WrongBaseline,ResultsNotRegionSpecific,ReAnalyze
-3,GSE30577,535864,84556,treatment,Rabies virus has_genotype strain CVS-11,reference substance role,FALSE,NA,Y,,,
-4,GSE42264,513873,89756,treatment,measles,reference substance role,FALSE,NA,Y,,,
-7,GSE44331,546199,97695,treatment,Vesicular stomatitis Indiana virus,reference substance role,FALSE,NA,Y,,,
-14,GSE51365,466082,99431,disease,murine gammaherpesvirus 68,reference substance role,TRUE,brain,Y,,,
-15,GSE51365,466082,99432,disease,murine gammaherpesvirus 68 has phenotype latency-defective,reference substance role,TRUE,brain,Y,,,
-16,GSE53784,522293,140573,treatment,West Nile virus,reference substance role,FALSE,NA,Y,,,
-17,GSE53784,522293,140572,treatment,Japanese encephalitis virus,reference substance role,FALSE,NA,Y,,,
-19,GSE91074,523663,142941,treatment,Venezuelan equine encephalitis virus strain TC83,reference substance role,FALSE,NA,Y,,,
